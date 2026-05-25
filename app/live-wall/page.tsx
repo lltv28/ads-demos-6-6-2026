@@ -12,22 +12,23 @@ const COLS = 4;
 const ROWS = 2;
 const LEAD_COUNT = COLS * ROWS; // 8
 
-// Layout geometry (all derived from the fixed stage, so transforms are exact).
+// Layout geometry. Left = a stat "scoreboard" rail; right = the live demo wall.
+// Everything derives from the fixed stage so the scale-to-fit transform is exact.
 const PAD = 28;
-const GAP = 12;
-const HEADER_H = 156;
-const HEADER_GAP = 16;
-const LABEL_H = 24;
+const COL_GAP = 24; // gap between the rail and the wall
+const TILE_GAP = 14; // gap between demo tiles
+const RAIL_W = 384; // left scoreboard rail (20% of the 1920 stage)
+const LABEL_H = 24; // per-tile header strip
 
-const GRID_W = STAGE_W - PAD * 2;
-const GRID_H = STAGE_H - PAD * 2 - HEADER_H - HEADER_GAP;
-const TILE_W = Math.floor((GRID_W - (COLS - 1) * GAP) / COLS);
-const ROW_H = Math.floor((GRID_H - (ROWS - 1) * GAP) / ROWS);
-const CONTENT_H = ROW_H - LABEL_H;
+const WALL_W = STAGE_W - PAD * 2 - RAIL_W - COL_GAP; // 1456
+const WALL_H = STAGE_H - PAD * 2; // 1024
+const TILE_W = Math.floor((WALL_W - (COLS - 1) * TILE_GAP) / COLS); // 353
+const ROW_H = Math.floor((WALL_H - (ROWS - 1) * TILE_GAP) / ROWS); // 505
+const CONTENT_H = ROW_H - LABEL_H; // 481
 
 // Shrink the funnel content inside each tile so a full card (paywall / booking /
-// results) fits vertically instead of being cropped at the bottom. Lower = more
-// vertical content visible (at smaller size). Tune here.
+// results) fits vertically. Lower = more vertical content visible (at smaller
+// size). The taller tiles in this layout leave plenty of room. Tune here.
 const DEMO_SCALE = 0.62;
 
 // Distinct, evenly-spread funnel start points (one per tile) so no two demos
@@ -48,7 +49,10 @@ const BASE_PURCHASES = 45; // low-ticket purchases earlier today
 const BASE_CALLS = 30; // strategy calls booked earlier today
 const BASE_UPSELLS = Math.round((BASE_PURCHASES * UPSELL_PCT) / 100); // 16
 const BASE_REVENUE = BASE_PURCHASES * PRICE_USD + BASE_UPSELLS * UPSELL_PRICE_USD; // ≈ $5,055
-const LEAD_START = BASE_LEADS + 1; // next lead # of the day (visitor index → 121)
+const LEAD_START = BASE_LEADS + 1; // first on-screen tile is lead #121
+// The 8 tiles occupy 121–128; the conversion feed counts forward from there so
+// the running ledger never collides with the live tiles.
+const FEED_START = LEAD_START + LEAD_COUNT; // 129
 
 // ── Design-system palette (light) ───────────────────────────────────────
 const C = {
@@ -66,12 +70,25 @@ const C = {
   cardShadow: '0 4px 16px rgba(15,23,42,0.06)',
 };
 
-// Single corner radius for every rectangular surface/control on the dashboard
-// (cards, tiles, selector, menus, buttons). Round dots are circles, separate.
+// Single corner radius for every rectangular surface/control on the dashboard.
 const R = { card: '14px' };
 
 type Lead = { id: number; seed: number };
 type Outcome = { outcome: 'buy' | 'book'; valueUsd: number };
+type FeedEvent = { key: number; leadNo: number; outcome: 'buy' | 'book'; valueUsd: number };
+
+// Pre-fill the conversion feed so the wall reads like it's already mid-stream on
+// load — these are earlier leads from today's baseline (already counted in the
+// baseline tally, so they don't re-add to it). Negative keys never collide with
+// live events, whose keys start at 0 and climb. Newest (highest #) on top.
+const SEED_FEED: FeedEvent[] = [
+  { key: -1, leadNo: 120, outcome: 'buy', valueUsd: PRICE_USD },
+  { key: -2, leadNo: 119, outcome: 'book', valueUsd: 0 },
+  { key: -3, leadNo: 117, outcome: 'buy', valueUsd: PRICE_USD },
+  { key: -4, leadNo: 116, outcome: 'buy', valueUsd: PRICE_USD },
+  { key: -5, leadNo: 114, outcome: 'book', valueUsd: 0 },
+  { key: -6, leadNo: 113, outcome: 'buy', valueUsd: PRICE_USD },
+];
 
 // Scale the stage to fit the current window (1:1 at 1920×1080), SSR-safe.
 function useFitScale(): number {
@@ -87,15 +104,43 @@ function useFitScale(): number {
   return Math.min(w / STAGE_W, h / STAGE_H);
 }
 
+// Smoothly count the displayed number up to each new target (easeOutCubic) so a
+// fresh sale visibly ticks the revenue upward instead of snapping. Starts from
+// wherever the current animation is, so rapid updates chain cleanly.
+function useCountUp(target: number, durationMs = 700): number {
+  const [display, setDisplay] = useState(target);
+  const displayRef = useRef(target);
+
+  useEffect(() => {
+    const from = displayRef.current;
+    const to = target;
+    if (from === to) return;
+    let start: number | null = null;
+    let raf = 0;
+    const tick = (now: number) => {
+      if (start === null) start = now;
+      const t = Math.min(1, Math.max(0, (now - start) / durationMs));
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = from + (to - from) * eased;
+      displayRef.current = value;
+      setDisplay(value);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else { displayRef.current = to; setDisplay(to); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, durationMs]);
+
+  return display;
+}
+
 export default function LiveWallPage() {
-  const [sessionKey, setSessionKey] = useState(0);
-  const [speed, setSpeed] = useState(1);
-  const [loop, setLoop] = useState(true);
-  const [skipPaywallTimer, setSkipPaywallTimer] = useState(true);
-  const [showControls, setShowControls] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('controls') === '1';
-  });
+  // Locked-in recording defaults — no in-UI controls so nothing floats on camera.
+  // Tune these here; reload the page to reset the run.
+  const sessionKey = 0;
+  const speed = 0.5;
+  const loop = true;
+  const skipPaywallTimer = true;
 
   const fit = useFitScale();
 
@@ -128,8 +173,18 @@ export default function LiveWallPage() {
     [],
   );
 
-  // Each iframe reports its resolved outcome up via postMessage; deduped by leadId.
+  // Per-tile resolved status (latest wins) drives each tile's status pill.
   const [outcomes, setOutcomes] = useState<Record<number, Outcome>>({});
+  // Running scoreboard — climbs on every completed run (incl. loop replays).
+  const [tally, setTally] = useState({
+    purchases: BASE_PURCHASES,
+    calls: BASE_CALLS,
+    revenue: BASE_REVENUE,
+  });
+  // Reverse-chronological conversion feed for the ticker (newest first).
+  const [feed, setFeed] = useState<FeedEvent[]>(SEED_FEED);
+  const feedCounterRef = useRef(FEED_START);
+  const eventKeyRef = useRef(0);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -138,22 +193,41 @@ export default function LiveWallPage() {
       if (!data || data.source !== 'kdr-demo') return;
       const leadId = Number(data.leadId);
       if (!Number.isInteger(leadId) || leadId < 0) return;
-      const outcome = data.outcome === 'book' ? 'book' : 'buy';
+      const outcome: 'buy' | 'book' = data.outcome === 'book' ? 'book' : 'buy';
       const valueUsd = Number(data.valueUsd) || 0;
-      // First outcome per lead wins, so loop replays don't double-count.
-      setOutcomes((prev) => (prev[leadId] ? prev : { ...prev, [leadId]: { outcome, valueUsd } }));
+      // Real funnel completions only drive the per-tile status pill, so a tile
+      // that flips to "Bought/Booked" matches what's on its own screen. The
+      // scoreboard tally + ticker run on a fixed cadence (below), independent of
+      // how fast each funnel happens to finish.
+      setOutcomes((prev) => ({ ...prev, [leadId]: { outcome, valueUsd } }));
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
-  const tally = useMemo(() => {
-    const list = Object.values(outcomes);
-    const purchases = BASE_PURCHASES + list.filter((o) => o.outcome === 'buy').length;
-    const calls = BASE_CALLS + list.filter((o) => o.outcome === 'book').length;
-    const revenue = BASE_REVENUE + list.reduce((sum, o) => sum + o.valueUsd, 0);
-    return { purchases, calls, revenue };
-  }, [outcomes]);
+  // Drive the scoreboard + conversion feed at a steady ~6–8s average so the wall
+  // always reads "live". Each conversion is a purchase (~60%) or a booked call
+  // (~40%), matching the baseline buy/call ratio. Real-time (not scaled by the
+  // funnel playback speed).
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const emit = () => {
+      const isBuy = Math.random() < 0.6;
+      const outcome: 'buy' | 'book' = isBuy ? 'buy' : 'book';
+      const valueUsd = isBuy ? PRICE_USD : 0;
+      setTally((prev) => ({
+        purchases: prev.purchases + (isBuy ? 1 : 0),
+        calls: prev.calls + (isBuy ? 0 : 1),
+        revenue: prev.revenue + valueUsd,
+      }));
+      const leadNo = feedCounterRef.current++;
+      const key = eventKeyRef.current++;
+      setFeed((prev) => [{ key, leadNo, outcome, valueUsd }, ...prev].slice(0, 9));
+      timer = setTimeout(emit, 6000 + Math.random() * 2000); // next in 6–8s
+    };
+    timer = setTimeout(emit, 6000 + Math.random() * 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const buildFrameSrc = (lead: Lead, index: number) => {
     const random = createSeededRandom(lead.seed + sessionKey * 1000);
@@ -185,11 +259,6 @@ export default function LiveWallPage() {
     return `${BASE_PATH}/?${params.toString()}`;
   };
 
-  const restart = () => {
-    setOutcomes({});
-    setSessionKey((key) => key + 1);
-  };
-
   return (
     <main
       style={{
@@ -212,20 +281,21 @@ export default function LiveWallPage() {
           padding: `${PAD}px`,
           boxSizing: 'border-box',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
+          gap: `${COL_GAP}px`,
           background: 'linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%)',
           position: 'relative',
         }}
       >
-        {/* ── Hero header (centered) ── */}
-        <header
+        {/* ── Left scoreboard rail ── */}
+        <aside
           style={{
-            height: `${HEADER_H}px`,
+            width: `${RAIL_W}px`,
+            height: `${WALL_H}px`,
+            flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '14px',
+            gap: '18px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -233,34 +303,36 @@ export default function LiveWallPage() {
             <span
               style={{
                 color: C.green,
-                fontSize: '14px',
+                fontSize: '16px',
                 fontWeight: 700,
-                letterSpacing: '2.5px',
+                letterSpacing: '2px',
                 textTransform: 'uppercase',
               }}
             >
-              Kodara - Low Ticket v1.2 Funnel
+              Low Ticket v1.2
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'stretch' }}>
-            <StatBlock label="Revenue · today" value={`$${tally.revenue.toLocaleString()}`} accent={C.green} />
-            <StatBlock label="Purchases" value={tally.purchases.toLocaleString()} accent={C.muted} />
-            <StatBlock label="Calls booked" value={tally.calls.toLocaleString()} accent={C.muted} />
-            <StatBlock label="Upsell %" value={`${UPSELL_PCT}%`} accent={C.muted} />
+          <RevenueHero amount={tally.revenue} />
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <MiniStat label="Purchases" value={tally.purchases.toLocaleString()} />
+            <MiniStat label="Calls" value={tally.calls.toLocaleString()} />
+            <MiniStat label="Upsell %" value={`${UPSELL_PCT}%`} />
           </div>
-        </header>
 
-        <div style={{ height: `${HEADER_GAP}px` }} />
+          <Ticker feed={feed} />
+        </aside>
 
-        {/* ── Tile grid ── */}
+        {/* ── Right demo wall ── */}
         <section
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${COLS}, ${TILE_W}px)`,
             gridTemplateRows: `repeat(${ROWS}, ${ROW_H}px)`,
-            gap: `${GAP}px`,
-            justifyContent: 'center',
+            gap: `${TILE_GAP}px`,
+            alignContent: 'start',
+            flex: 1,
           }}
         >
           {leads.map((lead, index) => {
@@ -300,7 +372,7 @@ export default function LiveWallPage() {
 
                 <div style={{ width: `${TILE_W}px`, height: `${CONTENT_H}px`, overflow: 'hidden', background: C.appBg }}>
                   <iframe
-                    title={`Lead ${index + 1}`}
+                    title={`Lead ${LEAD_START + index}`}
                     src={buildFrameSrc(lead, index)}
                     allow="autoplay"
                     style={{
@@ -318,84 +390,11 @@ export default function LiveWallPage() {
           })}
         </section>
 
-        {/* ── Presentation controls (hidden by default; hover dot or ?controls=1) ── */}
-        <button
-          type="button"
-          onClick={() => setShowControls((v) => !v)}
-          aria-label="Toggle controls"
-          className="wall-gear"
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            width: '26px',
-            height: '26px',
-            borderRadius: R.card,
-            border: `1px solid ${C.border}`,
-            background: 'rgba(255,255,255,0.85)',
-            color: C.muted,
-            cursor: 'pointer',
-            opacity: showControls ? 0.9 : 0,
-            transition: 'opacity 0.15s',
-            fontSize: '13px',
-            lineHeight: 1,
-          }}
-        >
-          ⚙
-        </button>
-
-        {showControls && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '44px',
-              right: '10px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '10px',
-              alignItems: 'center',
-              background: C.card,
-              border: `1px solid ${C.border}`,
-              borderRadius: R.card,
-              padding: '12px 14px',
-              boxShadow: C.cardShadow,
-            }}
-          >
-            <label style={{ color: C.slate, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              Speed
-              <select
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-                style={{ background: C.card, color: C.ink, border: `1px solid ${C.border}`, borderRadius: R.card, fontSize: '12px', padding: '6px 8px' }}
-              >
-                <option value={0.75}>0.75x</option>
-                <option value={1}>1x</option>
-                <option value={1.25}>1.25x</option>
-                <option value={1.5}>1.5x</option>
-              </select>
-            </label>
-            <label style={{ color: C.slate, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} />
-              Auto-loop
-            </label>
-            <label style={{ color: C.slate, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <input type="checkbox" checked={skipPaywallTimer} onChange={(e) => setSkipPaywallTimer(e.target.checked)} />
-              Skip paywall timer
-            </label>
-            <button
-              type="button"
-              onClick={restart}
-              style={{ background: C.green, color: C.card, border: 'none', borderRadius: R.card, fontWeight: 700, fontSize: '12px', padding: '8px 16px', cursor: 'pointer' }}
-            >
-              Restart all {LEAD_COUNT}
-            </button>
-          </div>
-        )}
       </div>
 
       <style>{`
-        .wall-gear:hover { opacity: 0.9 !important; }
         .wall-range-item:hover { background: #f1f5f9 !important; }
+        @keyframes wall-feed-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </main>
   );
@@ -442,7 +441,7 @@ function LiveRangeSelect() {
           padding: '7px 14px',
           cursor: 'pointer',
           fontFamily: 'inherit',
-          fontSize: '13px',
+          fontSize: '16px',
           fontWeight: 700,
           letterSpacing: '1px',
           textTransform: 'uppercase',
@@ -506,7 +505,7 @@ function LiveRangeSelect() {
                 padding: '8px 12px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
-                fontSize: '13px',
+                fontSize: '16px',
                 fontWeight: 600,
                 color: C.ink,
               }}
@@ -516,7 +515,7 @@ function LiveRangeSelect() {
               )}
               <span style={{ flex: 1 }}>{r.label}</span>
               {r.key === 'today' && (
-                <span style={{ color: C.green, fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px' }}>LIVE</span>
+                <span style={{ color: C.green, fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px' }}>LIVE</span>
               )}
             </button>
           ))}
@@ -526,27 +525,125 @@ function LiveRangeSelect() {
   );
 }
 
-function StatBlock({ label, value, accent }: { label: string; value: string; accent: string }) {
+// The hero number — the focal point of the recording. Big, tabular, green.
+// Counts up to each new total so a fresh sale ticks the number upward.
+function RevenueHero({ amount }: { amount: number }) {
+  const display = useCountUp(amount);
   return (
     <div
       style={{
-        minWidth: '176px',
         background: C.card,
         border: `1px solid ${C.border}`,
         borderRadius: R.card,
-        padding: '16px 20px',
         boxShadow: C.cardShadow,
-        textAlign: 'center',
+        padding: '28px 32px',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        gap: '10px',
       }}
     >
-      <div style={{ color: C.muted, fontSize: '11px', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '4px' }}>
+      <div style={{ color: C.muted, fontSize: '16px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>
+        Revenue · today
+      </div>
+      <div
+        style={{
+          color: C.green,
+          fontSize: '88px',
+          fontWeight: 700,
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+          letterSpacing: '-1.5px',
+        }}
+      >
+        {`$${Math.round(display).toLocaleString()}`}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: C.green, fontSize: '16px', fontWeight: 600 }}>
+        <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: C.green }} className="pulse-glow" />
+        Updating live
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: R.card,
+        padding: '16px 18px',
+        boxShadow: C.cardShadow,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+      }}
+    >
+      <div style={{ color: C.muted, fontSize: '13px', fontWeight: 600, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
         {label}
       </div>
-      <div style={{ color: accent, fontSize: '40px', fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ color: C.ink, fontSize: '41px', fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
         {value}
+      </div>
+    </div>
+  );
+}
+
+// Reverse-chronological feed of conversions; new rows animate in at the top.
+function Ticker({ feed }: { feed: FeedEvent[] }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: R.card,
+        boxShadow: C.cardShadow,
+        padding: '18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ color: C.muted, fontSize: '13px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+          Latest conversions
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+        {feed.length === 0 && (
+          <div style={{ color: C.faint, fontSize: '17px', padding: '8px 0' }}>Waiting for the first conversion…</div>
+        )}
+        {feed.map((e) => {
+          const isBuy = e.outcome === 'buy';
+          const accent = isBuy ? C.green : C.blue;
+          return (
+            <div
+              key={e.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 4px',
+                borderBottom: `1px solid ${C.subtle}`,
+                animation: 'wall-feed-in 280ms ease-out',
+              }}
+            >
+              <span style={{ width: '9px', height: '9px', borderRadius: '999px', background: accent, flexShrink: 0 }} />
+              <span style={{ color: C.ink, fontSize: '18px', fontWeight: 600, flexShrink: 0 }}>
+                Lead {e.leadNo}
+              </span>
+              <span style={{ flex: 1 }} />
+              <span style={{ color: accent, fontSize: '18px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {isBuy ? `bought · $${e.valueUsd}` : 'booked a call'}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
