@@ -4,7 +4,12 @@ import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
+  // Append the platform emoji fonts so glyphs like 💰 📅 🔥 in the ad stages
+  // resolve to the OS color-emoji face — Apple Color Emoji on macOS — instead of
+  // relying on the browser's implicit last-resort fallback. Every demo uses
+  // fontFamily:'inherit', so this body-level stack reaches all of them.
+  fallback: ["Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "sans-serif"],
 });
 
 export const metadata: Metadata = {

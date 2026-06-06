@@ -185,3 +185,17 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .pulse-glow { animation: none; opacity: 1; }
 }
+
+/* Hide the Next.js dev overlay / "N issues" badge everywhere (incl. inside the
+   funnel iframes embedded by the ad stages). No-op in production. */
+nextjs-portal,
+nextjs-dev-tools-portal,
+[data-nextjs-toast],
+[data-next-badge-root],
+[data-next-badge],
+[data-nextjs-dev-indicator],
+.nextjs-toast-errors-parent,
+.nextjs-toast-errors,
+[data-nextjs-dialog-overlay] {
+  display: none !important;
+}
