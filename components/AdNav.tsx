@@ -1,12 +1,17 @@
 'use client';
 
-// Left-side switcher for the /ad/* recording stages. Visible by default. Hide it
-// for a clean recording with the "Hide" control or the M key — a thin tab stays
-// on the left edge to reopen. Keys: 1–5 jump to a variant, M toggle.
+// Left-side switcher for the /ad/* recording stages. Pinned open by default.
+// Hide it for a clean recording with the "Hide" control or the M key — once
+// hidden it disappears entirely (nothing on camera) and only reappears while the
+// cursor is at the very left edge of the screen (or over the menu itself).
+// Keys: 1–5 jump to a variant, M toggle pin.
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BASE_PATH } from '@/lib/basePath';
+
+// How close to the left edge (px) the cursor must be to reveal the hidden menu.
+const REVEAL_PX = 24;
 
 const VARIANTS = [
   { slug: 'org-chart', key: 'A', name: 'The Org Chart' },
@@ -18,12 +23,15 @@ const VARIANTS = [
 
 export default function AdNav() {
   const pathname = usePathname() || '';
-  const [open, setOpen] = useState(true);
+  const [pinned, setPinned] = useState(true); // shown on load; M / "Hide" toggle
+  const [hovering, setHovering] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const visible = pinned || hovering;
 
-  // Keyboard: 1–5 jump, M toggle.
+  // Keyboard: 1–5 jump, M toggle pin.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'm') { setOpen((v) => !v); return; }
+      if (e.key.toLowerCase() === 'm') { setPinned((v) => !v); setHovering(false); return; }
       const n = Number(e.key);
       if (Number.isInteger(n) && n >= 1 && n <= VARIANTS.length) {
         window.location.href = `${BASE_PATH}/ad/${VARIANTS[n - 1].slug}/`;
@@ -33,34 +41,31 @@ export default function AdNav() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Collapsed: a thin tab on the left edge to reopen.
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Show ad-stage menu"
-        style={{
-          position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
-          zIndex: 2147483000, cursor: 'pointer',
-          background: 'rgba(15,23,42,0.92)', color: '#cbd5e1',
-          border: '1px solid rgba(148,163,184,0.18)', borderLeft: 'none',
-          borderRadius: '0 12px 12px 0', padding: '14px 9px',
-          fontFamily: 'system-ui, sans-serif', fontSize: 12, fontWeight: 800,
-          letterSpacing: 1, writingMode: 'vertical-rl', textOrientation: 'mixed',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        }}
-      >
-        ‹ STAGES
-      </button>
-    );
-  }
+  // When unpinned, reveal the menu only while the cursor is at the left edge or
+  // over the (revealed) menu itself; otherwise keep it fully hidden off-camera.
+  // While hidden the menu is translated off-screen, so its rect can't match.
+  useEffect(() => {
+    if (pinned) return; // no hover listener while pinned open
+    const onMove = (e: PointerEvent) => {
+      if (e.clientX <= REVEAL_PX) { setHovering(true); return; }
+      const r = navRef.current?.getBoundingClientRect();
+      const over = !!r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      setHovering(over);
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [pinned]);
 
   return (
     <nav
+      ref={navRef}
       style={{
-        position: 'fixed', left: 18, top: '50%', transform: 'translateY(-50%)',
-        zIndex: 2147483000, width: 236,
+        position: 'fixed', left: 18, top: '50%', width: 236,
+        transform: visible ? 'translate(0, -50%)' : 'translate(calc(-100% - 18px), -50%)',
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease',
+        zIndex: 2147483000,
         background: 'rgba(15,23,42,0.94)',
         border: '1px solid rgba(148,163,184,0.18)',
         borderRadius: 16, boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
@@ -77,8 +82,8 @@ export default function AdNav() {
         </span>
         <button
           type="button"
-          onClick={() => setOpen(false)}
-          title="Hide menu (M)"
+          onClick={() => { setPinned(false); setHovering(false); }}
+          title="Hide menu (M) — reappears on left-edge hover"
           style={{ cursor: 'pointer', background: 'transparent', border: 'none', color: '#64748b', fontSize: 12, fontWeight: 700, padding: '2px 4px' }}
         >
           Hide ‹
@@ -121,7 +126,7 @@ export default function AdNav() {
         ← All stages
       </a>
       <div style={{ padding: '2px 10px 4px', fontSize: 11, color: '#475569', fontFamily: 'ui-monospace, Menlo, monospace' }}>
-        1–5 jump · M hide
+        1–5 jump · M hide · edge-hover to reveal
       </div>
     </nav>
   );
