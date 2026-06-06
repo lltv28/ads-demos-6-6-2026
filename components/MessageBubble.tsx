@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { asset } from '@/lib/basePath';
 import { DMessage } from '@/lib/types';
 import StreamingText from './StreamingText';
 
@@ -72,7 +73,7 @@ export default function MessageBubble({ message, isNew, children, onStreamingCom
       <div className="max-w-[600px]">
         <div className="flex items-start gap-3">
           <Image
-            src="/profilepicnew.png"
+            src={asset('/profilepicnew.png')}
             alt="Lucas"
             width={36}
             height={36}

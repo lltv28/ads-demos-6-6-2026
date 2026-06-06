@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { asset } from '@/lib/basePath';
 import { DMessage, UserAnswers } from '@/lib/types';
 import { useChatFlow } from '@/lib/useChatFlow';
 import { useSplitSync } from '@/lib/useSplitSync';
@@ -676,7 +677,7 @@ export default function OnboardingChat({ messages, milestones, totalFlowItems }:
             <div className="animate-fade-in-up">
               <div className="flex items-start gap-3">
                 <Image
-                  src="/profilepicnew.png"
+                  src={asset('/profilepicnew.png')}
                   alt="Lucas"
                   width={32}
                   height={32}

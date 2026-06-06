@@ -1,12 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import { asset } from '@/lib/basePath';
 
 export default function TypingIndicator() {
   return (
     <div className="flex items-center gap-3 animate-fade-in-up">
       <Image
-        src="/profilepicnew.png"
+        src={asset('/profilepicnew.png')}
         alt="Lucas"
         width={36}
         height={36}
