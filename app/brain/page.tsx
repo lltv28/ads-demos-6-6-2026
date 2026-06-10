@@ -39,17 +39,21 @@ function SalesBrainInner() {
 
   useEffect(() => {
     if (!attract) return;
+    // Choreographed loop: focus 2 agents (panel open, graph view), then show the
+    // chat report, then repeat with the next agents. Hands-free for recording.
     const agents = model.agents;
+    const seq: Array<() => void> = [];
+    for (let k = 0; k < 9; k += 3) {
+      const a1 = agents[k % agents.length];
+      const a2 = agents[(k + 1) % agents.length];
+      seq.push(() => { setView('graph'); setFocusId(a1.id); setSelectedId(a1.id); });
+      seq.push(() => { setFocusId(a2.id); setSelectedId(a2.id); });
+      seq.push(() => { setView('chat'); setSelectedId(null); });
+    }
     let i = 0;
     let timer: ReturnType<typeof setTimeout>;
-    const step = () => {
-      const a = agents[i % agents.length];
-      setFocusId(a.id);
-      setSelectedId(a.id);
-      i += 1;
-      timer = setTimeout(step, 6000);
-    };
-    timer = setTimeout(step, 2500);
+    const step = () => { seq[i % seq.length](); i += 1; timer = setTimeout(step, 5500); };
+    timer = setTimeout(step, 2200);
     return () => clearTimeout(timer);
   }, [attract, model.agents]);
 
