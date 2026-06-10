@@ -42,7 +42,7 @@ export default function SwitchboardAd() {
   const calls = useCountUp(tally.calls);
   const revenue = useCountUp(tally.revenue);
 
-  // Lead rain: spawn a chip every ~1.2s, prune when its fall completes.
+  // Lead rain: spawn a chip every ~1.2s; the .slice(-5) cap evicts old (already-invisible) chips.
   const [drops, setDrops] = useState<Drop[]>([]);
   const dropKey = useRef(0);
   useEffect(() => {
@@ -52,12 +52,6 @@ export default function SwitchboardAd() {
     }, 1200);
     return () => clearInterval(spawn);
   }, []);
-  useEffect(() => {
-    if (drops.length === 0) return;
-    const oldest = drops[0];
-    const t = setTimeout(() => setDrops((prev) => prev.filter((d) => d.key !== oldest.key)), DROP_MS + 200);
-    return () => clearTimeout(t);
-  }, [drops]);
 
   // Orb flare per tally event.
   const [flare, setFlare] = useState(0);
@@ -66,6 +60,7 @@ export default function SwitchboardAd() {
     const top = feed[0];
     if (!top || lastKey.current === top.key) return;
     lastKey.current = top.key;
+    // Deferred a tick: react-hooks/set-state-in-effect forbids sync setState in effects.
     const t = setTimeout(() => setFlare((f) => f + 1), 0);
     return () => clearTimeout(t);
   }, [feed]);

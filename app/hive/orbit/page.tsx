@@ -54,7 +54,8 @@ export default function OrbitAd() {
     if (!top || lastKey.current === top.key) return;
     lastKey.current = top.key;
     const captured = { key: top.key + 1, idx: top.leadNo % LIVE };
-    setTimeout(() => setPulse(captured), 0);
+    const t = setTimeout(() => setPulse(captured), 0);
+    return () => clearTimeout(t);
   }, [feed]);
 
   // Random outer mini flashes a SOLD/BOOKED chip every ~3.5s.

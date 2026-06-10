@@ -46,6 +46,7 @@ const MASK = [
   '................................................',
 ];
 const MAP_W = 1760, MAP_H = 880, MAP_X = (STAGE_W - MAP_W) / 2, MAP_Y = 90;
+const ARC_APEX_LIFT = 160;
 const DX = MAP_W / 48, DY = MAP_H / 24;
 const lonLatToXY = (lon: number, lat: number) => ({
   x: MAP_X + ((lon + 180) / 360) * MAP_W,
@@ -96,6 +97,15 @@ export default function GlobalAd() {
   const { tally, feed } = useLiveTally({ minMs: 4000, maxMs: 6500 });
   const revenue = useCountUp(tally.revenue);
 
+  const maskDots = useMemo(() => MASK.flatMap((row, r) =>
+    row.split('').map((ch, col) =>
+      ch === '#' ? (
+        <circle key={`${r}-${col}`} cx={MAP_X + col * DX + DX / 2} cy={MAP_Y + r * DY + DY / 2} r={5}
+          fill="rgba(74,222,128,0.13)" />
+      ) : null,
+    ),
+  ), []);
+
   const [arc, setArc] = useState<{ key: number; city: City }>({ key: 0, city: CITIES[0] });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const lastKey = useRef<number | null>(null);
@@ -118,7 +128,7 @@ export default function GlobalAd() {
   const arcPath = (c: City) => {
     const p = lonLatToXY(c.lon, c.lat);
     const mx = (CX + p.x) / 2;
-    const my = Math.min(CY, p.y) - 160;
+    const my = Math.min(CY, p.y) - ARC_APEX_LIFT;
     return `M ${CX} ${CY} Q ${mx} ${my} ${p.x} ${p.y}`;
   };
 
@@ -139,14 +149,7 @@ export default function GlobalAd() {
 
         {/* Dot-matrix map + cities + arcs */}
         <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5 }}>
-          {MASK.flatMap((row, r) =>
-            row.split('').map((ch, col) =>
-              ch === '#' ? (
-                <circle key={`${r}-${col}`} cx={MAP_X + col * DX + DX / 2} cy={MAP_Y + r * DY + DY / 2} r={5}
-                  fill="rgba(74,222,128,0.13)" />
-              ) : null,
-            ),
-          )}
+          {maskDots}
           {CITIES.map((c) => {
             const p = lonLatToXY(c.lon, c.lat);
             const night = cityLocal(c).night;
