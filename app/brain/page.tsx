@@ -3,10 +3,12 @@
 // Sales Brain app shell. One page, client view-state (graph | entity | chat);
 // no per-entity routes so it static-exports and attract mode can switch views
 // without navigation. Graph/EntityPanel/ChatView are wired in later tasks.
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { buildModel } from '@/lib/brain/data';
 import TopBar from '@/components/brain/TopBar';
-import Graph from '@/components/brain/Graph';
+
+const Graph = dynamic(() => import('@/components/brain/Graph'), { ssr: false });
 
 export default function SalesBrainPage() {
   const model = useMemo(() => buildModel(), []);
