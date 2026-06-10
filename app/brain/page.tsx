@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { buildModel } from '@/lib/brain/data';
 import TopBar from '@/components/brain/TopBar';
+import EntityPanel from '@/components/brain/EntityPanel';
 
 const Graph = dynamic(() => import('@/components/brain/Graph'), { ssr: false });
 
@@ -32,6 +33,9 @@ export default function SalesBrainPage() {
       <TopBar query={query} onQuery={setQuery} live={live} onToggleLive={() => setLive((v) => !v)} />
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} />
+        {selectedId && selectedId !== 'core' && (
+          <EntityPanel model={model} id={selectedId} onClose={() => setSelectedId(null)} />
+        )}
       </div>
     </main>
   );
