@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { buildModel } from '@/lib/brain/data';
 import TopBar from '@/components/brain/TopBar';
 import EntityPanel from '@/components/brain/EntityPanel';
+import LeftRail from '@/components/brain/LeftRail';
 
 const Graph = dynamic(() => import('@/components/brain/Graph'), { ssr: false });
 
@@ -53,11 +54,14 @@ function SalesBrainInner() {
   return (
     <main style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#f4f5f7', fontFamily: 'ui-sans-serif, system-ui, sans-serif', overflow: 'hidden' }}>
       <TopBar query={query} onQuery={setQuery} live={live} onToggleLive={() => setLive((v) => !v)} />
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} focusId={focusId} />
-        {selectedId && selectedId !== 'core' && (
-          <EntityPanel key={selectedId} model={model} id={selectedId} onClose={() => setSelectedId(null)} />
-        )}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <LeftRail model={model} onSelect={(id) => { setSelectedId(id); setFocusId(id); }} selectedId={selectedId} />
+        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+          <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} focusId={focusId} />
+          {selectedId && selectedId !== 'core' && (
+            <EntityPanel key={selectedId} model={model} id={selectedId} onClose={() => setSelectedId(null)} />
+          )}
+        </div>
       </div>
     </main>
   );
