@@ -13,10 +13,36 @@ export default function EntityPanel({ model, id, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('Overview');
   const agent = model.agents.find((a) => a.id === id);
   if (!agent) {
+    const tool = model.tools.find((t) => `node:${t.id}` === id);
+    const offer = model.offers.find((o) => `node:${o.id}` === id);
+    if (tool) {
+      const users = model.agents.filter((a) => a.toolIds.includes(tool.id));
+      return (
+        <Shell title={tool.name} subtitle="Tool · connected" color="#64748b" onClose={onClose}>
+          <Row label={`Agents with access (${users.length})`}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {users.slice(0, 12).map((u) => <span key={u.id} style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: squadColor(u.squadId), borderRadius: 999, padding: '4px 10px' }}>{u.initials}</span>)}
+              {users.length === 0 && <span style={{ color: '#9ca3af', fontSize: 13 }}>No agents connected.</span>}
+            </div>
+          </Row>
+        </Shell>
+      );
+    }
+    if (offer) {
+      return (
+        <Shell title={offer.name} subtitle={offer.priceUsd ? `Offer · $${offer.priceUsd}` : 'Offer · free'} color="#16A46C" onClose={onClose}>
+          <Row label="Funnel steps">
+            <ol style={{ margin: 0, paddingLeft: 18, color: '#374151', fontSize: 14, lineHeight: 1.8 }}>
+              {offer.steps.map((s) => <li key={s}>{s}</li>)}
+            </ol>
+          </Row>
+        </Shell>
+      );
+    }
     const node = model.nodes.find((n) => n.id === id);
     return (
       <Shell title={node?.label ?? 'Node'} subtitle={node?.type ?? ''} color="#64748b" onClose={onClose}>
-        <p style={{ color: '#6b7280', fontSize: 14 }}>Used across the Lucas AI sales floor. Select an agent node to see a full profile.</p>
+        <p style={{ color: '#6b7280', fontSize: 14 }}>Select an agent node to see a full profile.</p>
       </Shell>
     );
   }
