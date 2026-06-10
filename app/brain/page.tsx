@@ -11,6 +11,7 @@ import { buildModel } from '@/lib/brain/data';
 import TopBar from '@/components/brain/TopBar';
 import EntityPanel from '@/components/brain/EntityPanel';
 import LeftRail from '@/components/brain/LeftRail';
+import ChatView from '@/components/brain/ChatView';
 
 const Graph = dynamic(() => import('@/components/brain/Graph'), { ssr: false });
 
@@ -19,6 +20,7 @@ function SalesBrainInner() {
   const [query, setQuery] = useState('');
   const [live, setLive] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<'graph' | 'chat'>('graph');
 
   const params = useSearchParams();
   const attract = params.get('attract') === '1';
@@ -54,12 +56,23 @@ function SalesBrainInner() {
   return (
     <main style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#f4f5f7', fontFamily: 'ui-sans-serif, system-ui, sans-serif', overflow: 'hidden' }}>
       <TopBar query={query} onQuery={setQuery} live={live} onToggleLive={() => setLive((v) => !v)} />
+      <div style={{ display: 'flex', gap: 6, padding: '8px 22px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
+        {(['graph', 'chat'] as const).map((v) => (
+          <button key={v} type="button" onClick={() => setView(v)} style={{ border: 'none', cursor: 'pointer', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, background: view === v ? '#111418' : '#f3f4f6', color: view === v ? '#fff' : '#6b7280' }}>{v === 'graph' ? 'Graph' : 'Chat & Report'}</button>
+        ))}
+      </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
         <LeftRail model={model} onSelect={(id) => { setSelectedId(id); setFocusId(id); }} selectedId={selectedId} />
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} focusId={focusId} />
-          {selectedId && selectedId !== 'core' && (
-            <EntityPanel key={selectedId} model={model} id={selectedId} onClose={() => setSelectedId(null)} />
+          {view === 'graph' ? (
+            <>
+              <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} focusId={focusId} />
+              {selectedId && selectedId !== 'core' && (
+                <EntityPanel key={selectedId} model={model} id={selectedId} onClose={() => setSelectedId(null)} />
+              )}
+            </>
+          ) : (
+            <ChatView model={model} />
           )}
         </div>
       </div>
