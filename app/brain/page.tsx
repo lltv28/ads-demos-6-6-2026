@@ -6,11 +6,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildModel } from '@/lib/brain/data';
 import TopBar from '@/components/brain/TopBar';
+import Graph from '@/components/brain/Graph';
 
 export default function SalesBrainPage() {
   const model = useMemo(() => buildModel(), []);
   const [query, setQuery] = useState('');
   const [live, setLive] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Recording chrome: hide the Next dev overlay + reset body so nothing floats.
   useEffect(() => {
@@ -26,8 +28,8 @@ export default function SalesBrainPage() {
   return (
     <main style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#f4f5f7', fontFamily: 'ui-sans-serif, system-ui, sans-serif', overflow: 'hidden' }}>
       <TopBar query={query} onQuery={setQuery} live={live} onToggleLive={() => setLive((v) => !v)} />
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 15 }}>
-        Graph mounts here ({model.agents.length} agents) — Task 4
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} />
       </div>
     </main>
   );
