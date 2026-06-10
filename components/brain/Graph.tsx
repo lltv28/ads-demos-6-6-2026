@@ -108,6 +108,10 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
     return () => clearTimeout(timer);
   }, [live, model.edges]);
 
+  // Spotlight is derived straight from focusId (set only during attract mode) —
+  // no state/effect, so it stays lint-clean and recording-deterministic.
+  const spotlightId = focusId ?? null;
+
   return (
     <div
       ref={stageRef}
@@ -120,7 +124,10 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
           {model.edges.map((e, i) => {
             const a = posMap[e.source], b = posMap[e.target]; if (!a || !b) return null;
             const dim = neighbours && !(neighbours.has(e.source) && neighbours.has(e.target));
-            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#c9ccd1" strokeWidth={e.kind === 'hub' ? 1.6 : 1} opacity={dim ? 0.12 : 0.5} />;
+            const edgeOp = spotlightId !== null
+              ? (e.source === spotlightId || e.target === spotlightId ? 0.6 : 0.18)
+              : (dim ? 0.12 : 0.5);
+            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#c9ccd1" strokeWidth={e.kind === 'hub' ? 1.6 : 1} opacity={edgeOp} style={{ transition: 'opacity 320ms ease' }} />;
           })}
           {/* sale pulse */}
           {live && pulseEdge && posMap[pulseEdge.s] && posMap[pulseEdge.t] && (
@@ -131,11 +138,11 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
           {positioned.map((n) => {
             const dim = neighbours ? !neighbours.has(n.id) : false;
             const hl = matches(n);
-            const op = dim && !hl ? 0.18 : 1;
+            const op = spotlightId !== null ? (n.id === spotlightId ? 1 : 0.4) : (dim && !hl ? 0.18 : 1);
             const sel = n.id === selectedId;
             if (n.type === 'core') {
               return (
-                <g key={n.id} opacity={op} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }}>
+                <g key={n.id} opacity={op} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer', transition: 'opacity 320ms ease' }}>
                   <rect x={n.x - 34} y={n.y - 34} width={68} height={68} rx={16} fill="#111418" />
                   <text x={n.x} y={n.y + 10} textAnchor="middle" fontSize={32} fontWeight={800} fill="#fff">L</text>
                 </g>
@@ -143,26 +150,30 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
             }
             if (n.type === 'hub') {
               return (
-                <g key={n.id} opacity={op} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }}>
+                <g key={n.id} opacity={op} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer', transition: 'opacity 320ms ease' }}>
                   <circle cx={n.x} cy={n.y} r={24} fill={n.color} stroke={sel ? '#111418' : 'none'} strokeWidth={3} />
                   <text x={n.x} y={n.y + 5} textAnchor="middle" fontSize={13} fontWeight={800} fill="#fff">{n.label[0]}</text>
                   <text x={n.x} y={n.y + 42} textAnchor="middle" fontSize={13} fontWeight={700} fill="#374151">{n.label}</text>
                 </g>
               );
             }
-            if (n.type === 'lead') return <circle key={n.id} cx={n.x} cy={n.y} r={5} fill={n.color} opacity={op} />;
+            if (n.type === 'lead') return <circle key={n.id} cx={n.x} cy={n.y} r={5} fill={n.color} opacity={op} style={{ transition: 'opacity 320ms ease' }} />;
             if (n.type === 'tool' || n.type === 'offer') {
               return <rect key={n.id} x={n.x - 9} y={n.y - 9} width={18} height={18} rx={4} fill={n.color} opacity={op}
-                onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }} />;
+                onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer', transition: 'opacity 320ms ease' }} />;
             }
             // agent monogram
             return (
-              <g key={n.id} opacity={op} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer' }}>
+              <g key={n.id} opacity={op} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => onSelect(n.id)} style={{ cursor: 'pointer', transition: 'opacity 320ms ease' }}>
                 <circle cx={n.x} cy={n.y} r={hl || sel ? 16 : 13} fill={n.color} stroke={sel ? '#111418' : (hl ? '#fff' : 'none')} strokeWidth={sel ? 3 : 2} />
                 <text x={n.x} y={n.y + 4} textAnchor="middle" fontSize={10} fontWeight={700} fill="#fff">{n.initials}</text>
               </g>
             );
           })}
+          {/* attract focus ripple — keyed by focusId so it remounts and replays per agent */}
+          {focusId && posMap[focusId] && (
+            <circle key={`ripple-${focusId}`} cx={posMap[focusId].x} cy={posMap[focusId].y} r={14} fill="none" stroke={posMap[focusId].color} strokeWidth={3} className="brain-ripple" />
+          )}
         </svg>
       </div>
 
@@ -174,6 +185,8 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
       <style>{`
         @keyframes brain-pulse-k { from { stroke-dashoffset: 600; opacity: 1; } to { stroke-dashoffset: 0; opacity: 0; } }
         .brain-pulse { animation: brain-pulse-k 0.9s ease-out forwards; }
+        @keyframes brain-ripple-k { 0% { r: 14; opacity: 0.85; } 100% { r: 72; opacity: 0; } }
+        .brain-ripple { animation: brain-ripple-k 0.85s ease-out forwards; }
       `}</style>
     </div>
   );

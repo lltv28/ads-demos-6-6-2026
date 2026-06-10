@@ -128,7 +128,7 @@ export default function EntityPanel({ model, id, onClose }: Props) {
 
 function Shell({ title, subtitle, color, avatar, status, onClose, children }: { title: string; subtitle: string; color: string; avatar?: string; status?: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <aside style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 520, maxWidth: '92vw', background: '#fff', borderLeft: '1px solid #e5e7eb', boxShadow: '-12px 0 40px rgba(0,0,0,0.08)', zIndex: 60, display: 'flex', flexDirection: 'column', animation: 'panel-in 0.28s cubic-bezier(0.2,0.7,0.2,1)' }}>
+    <aside style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 520, maxWidth: '92vw', background: '#fff', borderLeft: '1px solid #e5e7eb', boxShadow: '-4px 0 16px rgba(0,0,0,0.06), -16px 0 56px rgba(0,0,0,0.10)', zIndex: 60, display: 'flex', flexDirection: 'column', animation: 'panel-in 0.35s cubic-bezier(0.34,1.56,0.64,1)' }}>
       <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 14 }}>
         <span style={{ width: 48, height: 48, borderRadius: 12, background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, flexShrink: 0 }}>{avatar ?? title[0]}</span>
         <div style={{ flex: 1, minWidth: 0 }}>

@@ -24,6 +24,7 @@ function SalesBrainInner() {
 
   const params = useSearchParams();
   const attract = params.get('attract') === '1';
+  const instant = params.get('instant') === '1'; // skip the initial delay (recording)
   const [focusId, setFocusId] = useState<string | null>(null);
 
   // Recording chrome: hide the Next dev overlay + reset body so nothing floats.
@@ -53,9 +54,9 @@ function SalesBrainInner() {
     let i = 0;
     let timer: ReturnType<typeof setTimeout>;
     const step = () => { seq[i % seq.length](); i += 1; timer = setTimeout(step, 5500); };
-    timer = setTimeout(step, 2200);
+    timer = setTimeout(step, instant ? 0 : 2200);
     return () => clearTimeout(timer);
-  }, [attract, model.agents]);
+  }, [attract, instant, model.agents]);
 
   return (
     <main style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#f4f5f7', fontFamily: 'ui-sans-serif, system-ui, sans-serif', overflow: 'hidden' }}>
