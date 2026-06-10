@@ -248,6 +248,29 @@ export function useLiveTally(opts?: {
   return { tally, feed };
 }
 
+// ── Per-tile outcomes keeping the funnel's REAL sale value (postMessage). ──
+// Used by the /hive/* stages: a badge on a tile must match what that tile's
+// own screen shows (same rule as /live-wall). useTileOutcomes (above) instead
+// substitutes randomSalePrice() and is kept as-is for the older /ad/* stages.
+export function useRealTileOutcomes(): Record<number, Outcome | undefined> {
+  const [outcomes, setOutcomes] = useState<Record<number, Outcome | undefined>>({});
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || data.source !== 'kdr-demo') return;
+      const leadId = Number(data.leadId);
+      if (!Number.isInteger(leadId) || leadId < 0) return;
+      const outcome: 'buy' | 'book' = data.outcome === 'book' ? 'book' : 'buy';
+      const valueUsd = outcome === 'buy' ? Number(data.valueUsd) || PRICE_USD : 0;
+      setOutcomes((prev) => ({ ...prev, [leadId]: { outcome, valueUsd } }));
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+  return outcomes;
+}
+
 // ── Build a funnel iframe URL for one tile ───────────────────────────────
 export function buildFunnelSrc(
   lead: Lead,
