@@ -124,8 +124,8 @@ export default function OrbitAd() {
             <div
               key={i}
               style={{
-                position: 'absolute', left: CX, top: CY, width: 120, height: 84, marginLeft: -60, marginTop: -42,
-                offsetPath: `ellipse(${ORBIT_RX}px ${ORBIT_RY}px at 0px 0px)`, offsetRotate: '0deg',
+                position: 'absolute', left: 0, top: 0, width: 120, height: 84, marginLeft: -60, marginTop: -42,
+                offsetPath: `ellipse(${ORBIT_RX}px ${ORBIT_RY}px at ${CX}px ${CY}px)`, offsetRotate: '0deg',
                 animation: `orbit-travel ${ORBIT_S}s linear infinite`,
                 animationDelay: `${-(i / MINIS) * ORBIT_S}s`,
                 zIndex: 5,
