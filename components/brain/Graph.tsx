@@ -41,11 +41,13 @@ export default function Graph({ model, live, query, selectedId, onSelect, focusI
     const stage = stageRef.current!;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const r = stage.getBoundingClientRect();
+      const px = e.clientX - r.left, py = e.clientY - r.top;
       const f = e.deltaY < 0 ? 1.12 : 1 / 1.12;
       const nz = Math.max(0.4, Math.min(2.4, z.current * f));
       const k = nz / z.current;
-      tx.current = e.clientX - (e.clientX - tx.current) * k;
-      ty.current = e.clientY - (e.clientY - ty.current) * k;
+      tx.current = px - (px - tx.current) * k;
+      ty.current = py - (py - ty.current) * k;
       z.current = nz; apply();
     };
     stage.addEventListener('wheel', onWheel, { passive: false });

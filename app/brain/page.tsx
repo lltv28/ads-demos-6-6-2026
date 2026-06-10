@@ -56,7 +56,7 @@ function SalesBrainInner() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <Graph model={model} live={live} query={query} selectedId={selectedId} onSelect={setSelectedId} focusId={focusId} />
         {selectedId && selectedId !== 'core' && (
-          <EntityPanel model={model} id={selectedId} onClose={() => setSelectedId(null)} />
+          <EntityPanel key={selectedId} model={model} id={selectedId} onClose={() => setSelectedId(null)} />
         )}
       </div>
     </main>

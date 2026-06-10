@@ -109,7 +109,7 @@ function Shell({ title, subtitle, color, avatar, status, onClose, children }: { 
           <div style={{ fontSize: 20, fontWeight: 800, color: '#111827' }}>{title}</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>{subtitle}{status ? ` · ${status}` : ''}</div>
         </div>
-        <button type="button" onClick={onClose} style={{ border: 'none', background: '#f3f4f6', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6b7280' }}>✕</button>
+        <button type="button" onClick={onClose} aria-label="Close panel" style={{ border: 'none', background: '#f3f4f6', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6b7280' }}>✕</button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '18px 24px' }}>{children}</div>
       <style>{`@keyframes panel-in { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }`}</style>
