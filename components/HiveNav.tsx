@@ -19,6 +19,7 @@ const VARIANTS = [
   { slug: 'assembly', key: '5', name: 'Assembly Line' },
   { slug: 'switchboard', key: '6', name: 'Switchboard · 9:16' },
   { slug: 'ladder', key: '7', name: 'The Value Ladder' },
+  { slug: 'ladder-d4a', key: '8', name: 'Value Ladder · d4a' },
 ];
 
 export default function HiveNav() {
@@ -122,7 +123,7 @@ export default function HiveNav() {
         ← All hive stages
       </a>
       <div style={{ padding: '2px 10px 4px', fontSize: 11, color: '#475569', fontFamily: 'ui-monospace, Menlo, monospace' }}>
-        1–7 jump · M pin · edge-hover to reveal
+        1–8 jump · M pin · edge-hover to reveal
       </div>
     </nav>
   );

@@ -14,6 +14,7 @@ const VARIANTS = [
   { slug: 'assembly', name: '5 · Assembly Line', aspect: '16:9 · record at 1920×1080', hook: 'Gray leads ride the belt into the brain; paying customers come out.' },
   { slug: 'switchboard', name: '6 · Switchboard', aspect: '9:16 · record at 1080×1920', hook: 'Leads rain into the orb; the conversations it\'s holding scroll below.' },
   { slug: 'ladder', name: '7 · The Value Ladder', aspect: '16:9 · record at 1920×1080', hook: 'Sideways pyramid: a wide base of low-ticket funnels narrows up to a few high-ticket closes — one AI runs the whole ladder.' },
+  { slug: 'ladder-d4a', name: '8 · Value Ladder · d4a', aspect: '16:9 · record at 1920×1080', hook: 'The Value Ladder in the d4a design system — warm white, Instrument Serif, emerald. The light/brand reinterpretation.' },
 ];
 
 export default function HiveIndex() {
