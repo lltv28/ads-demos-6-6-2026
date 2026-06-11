@@ -13,6 +13,7 @@ const VARIANTS = [
   { slug: 'mission-control', name: '4 · Mission Control', aspect: '16:9 · record at 1920×1080', hook: 'Ops room: brain on the big board, agent desks closing below.' },
   { slug: 'assembly', name: '5 · Assembly Line', aspect: '16:9 · record at 1920×1080', hook: 'Gray leads ride the belt into the brain; paying customers come out.' },
   { slug: 'switchboard', name: '6 · Switchboard', aspect: '9:16 · record at 1080×1920', hook: 'Leads rain into the orb; the conversations it\'s holding scroll below.' },
+  { slug: 'ladder', name: '7 · The Value Ladder', aspect: '16:9 · record at 1920×1080', hook: 'Sideways pyramid: a wide base of low-ticket funnels narrows up to a few high-ticket closes — one AI runs the whole ladder.' },
 ];
 
 export default function HiveIndex() {
