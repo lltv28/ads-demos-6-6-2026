@@ -37,9 +37,9 @@ type TierCfg = {
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number; sales: number;
 };
 const TIERS: TierCfg[] = [
-  { key: 'low', label: 'Low', price: 17, priceLabel: '$17', n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
-  { key: 'mid', label: 'Mid', price: 497, priceLabel: '$497/mo', n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
-  { key: 'high', label: 'High', price: 15000, priceLabel: '$15,000', n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
+  { key: 'low', label: 'Low', price: 17, priceLabel: '$17', n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 90 },
+  { key: 'mid', label: 'Mid', price: 497, priceLabel: '$497/mo', n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 8 },
+  { key: 'high', label: 'High', price: 15000, priceLabel: '$15,000', n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 0 },
 ];
 
 type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
@@ -81,18 +81,24 @@ export default function LadderD4aAd() {
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const paths = useMemo(() => tiles.map(threadPath), [tiles]);
-  const { tally, feed } = useLiveTally({ baseRevenue: 160681, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
+  const { tally, feed } = useLiveTally({ baseRevenue: 5506, basePurchases: 98, baseCalls: 12, minMs: 2000, maxMs: 3400 });
   const revenue = useCountUp(tally.revenue);
 
   const top = feed[0];
   const pulseIdx = top ? top.leadNo % TILE_COUNT : 0;
+  // No high-ticket closes today, so don't fire a money pulse from the high column.
+  const pulseHigh = top ? tiles[pulseIdx].tier.key === 'high' : false;
 
   const soldByTile = useMemo(() => {
     const m: Record<number, 'buy' | 'book'> = {};
     const recent = feed.slice(0, 4);
-    for (let i = recent.length - 1; i >= 0; i--) m[recent[i].leadNo % TILE_COUNT] = recent[i].outcome;
+    for (let i = recent.length - 1; i >= 0; i--) {
+      const idx = recent[i].leadNo % TILE_COUNT;
+      if (tiles[idx].tier.key === 'high') continue; // high tier shows 0 closes today
+      m[idx] = recent[i].outcome;
+    }
     return m;
-  }, [feed]);
+  }, [feed, tiles]);
 
   // Brain orb: idle green sphere; on each sale (≥5s apart) it spins up the
   // loading ring in the selling tier's colour, then settles back.
@@ -104,10 +110,12 @@ export default function LadderD4aAd() {
     const ev = feed[0];
     if (!ev || lastOrbKey.current === ev.key) return;
     lastOrbKey.current = ev.key;
+    const tier = tiles[ev.leadNo % TILE_COUNT].tier;
+    if (tier.key === 'high') return; // no high-ticket closes today — no purple ring
     const now = performance.now();
     if (now - lastLoadAt.current < SALE_MIN_MS) return;
     lastLoadAt.current = now;
-    const color = TIER_ORB_COLOR[tiles[ev.leadNo % TILE_COUNT].tier.key] ?? IDLE_COLOR;
+    const color = TIER_ORB_COLOR[tier.key] ?? IDLE_COLOR;
     setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
     settleRef.current = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), LOAD_MS);
   }, [feed, tiles]);
@@ -140,7 +148,7 @@ export default function LadderD4aAd() {
               <path d={d} stroke="rgba(22,164,108,0.7)" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeDasharray="14 240" className="ld4a-flow" style={{ animationDelay: `${i * 0.25}s` }} />
             </g>
           ))}
-          {top && (
+          {top && !pulseHigh && (
             <path key={top.key} d={paths[pulseIdx]} stroke={T.accent} strokeWidth={9} fill="none" strokeLinecap="round" strokeDasharray="40 2000" className="ld4a-inbound"
               style={{ filter: 'drop-shadow(0 0 7px rgba(22,164,108,0.6))' }} />
           )}
