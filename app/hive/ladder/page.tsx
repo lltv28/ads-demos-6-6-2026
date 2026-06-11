@@ -12,9 +12,11 @@ import {
   createLeads, buildFunnelSrc,
   useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
+import VoiceOrbCluster from '@/components/VoiceOrbCluster';
 
 const BG = '#0f172a';
 const CORE_CX = 250, CORE_CY = STAGE_H / 2, CORE_R = 150;
+const ORB_SIZE = 580; // VoiceOrbCluster canvas (cluster ≈0.52 of it → ~150px radius, matches the old orb), centred on the core
 
 type TierCfg = {
   key: string; label: string; price: number;
@@ -157,21 +159,22 @@ export default function LadderAd() {
           );
         })}
 
-        {/* Core (left) — the glowing brain hero with the revenue inside (Hive) */}
+        {/* Core (left) — particle-cluster brain (VoiceOrbCluster) with revenue overlaid */}
         <div key={top ? `core-${top.key}` : 'core'} style={{
-            position: 'absolute', left: CORE_CX - CORE_R, top: CORE_CY - CORE_R, width: CORE_R * 2, height: CORE_R * 2,
-            borderRadius: '50%', zIndex: 30,
-            background: 'radial-gradient(circle at 30% 30%, #4ade80 0%, #166534 60%, #064e3b 100%)',
-            boxShadow: '0 0 72px rgba(74,222,128,0.45), inset 0 4px 18px rgba(255,255,255,0.4)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            animation: 'ladder-bump 0.8s ease-out',
+            position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE,
+            zIndex: 30, animation: 'ladder-bump 0.8s ease-out',
           }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Revenue Today</div>
-          <div style={{ fontSize: 58, fontWeight: 700, color: '#fff', textShadow: '0 4px 12px rgba(0,0,0,0.3)', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-            ${Math.round(revenue).toLocaleString()}
-          </div>
-          <div style={{ marginTop: 14, background: 'rgba(0,0,0,0.3)', padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-            1 AI · runs every tier
+          <VoiceOrbCluster speaker="idle" level={0.25} size={ORB_SIZE} count={640} aiColor="#16A46C" idleColor="#22c55e" style={{ position: 'absolute', inset: 0 }} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            {/* soft dark backing so the white revenue reads over the green particles */}
+            <div style={{ position: 'absolute', width: 300, height: 210, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(4,14,9,0.62) 0%, rgba(4,14,9,0) 72%)' }} />
+            <div style={{ position: 'relative', fontSize: 16, fontWeight: 800, color: 'rgba(255,255,255,0.92)', textTransform: 'uppercase', letterSpacing: 1.5, textShadow: '0 2px 8px rgba(0,0,0,0.75)' }}>Revenue Today</div>
+            <div style={{ position: 'relative', fontSize: 56, fontWeight: 800, color: '#fff', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1, textShadow: '0 3px 16px rgba(0,0,0,0.85)' }}>
+              ${Math.round(revenue).toLocaleString()}
+            </div>
+            <div style={{ position: 'relative', marginTop: 12, background: 'rgba(0,0,0,0.42)', padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
+              1 AI · runs every tier
+            </div>
           </div>
         </div>
 
