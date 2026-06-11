@@ -6,15 +6,21 @@
 // funnels, money pulses to the core) but in the d4a system: warm white surfaces,
 // warm ink, emerald accent, Instrument Serif display + Instrument Sans body.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   STAGE_W, STAGE_H,
   createLeads, buildFunnelSrc,
   useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
+import VoiceOrbCluster, { type Speaker } from '@/components/VoiceOrbCluster';
 
 const BG = '#FFFFFF';
 const CORE_CX = 250, CORE_CY = STAGE_H / 2, CORE_R = 150;
+const ORB_SIZE = 580; // VoiceOrbCluster canvas (cluster ≈0.52 of it), centred on the core
+const IDLE_COLOR = '#16A46C'; // resting brain colour (Kodara green)
+const TIER_ORB_COLOR: Record<string, string> = { low: '#38bdf8', mid: '#f59e0b', high: '#a855f7' };
+const SALE_MIN_MS = 5000; // minimum gap between orb loadings (≥5s between "sales")
+const LOAD_MS = 2600;     // how long the loading ring holds per sale
 
 // d4a tokens (from the Kodara lander).
 const T = {
@@ -27,13 +33,13 @@ const T = {
 };
 
 type TierCfg = {
-  key: string; label: string; price: number;
+  key: string; label: string; price: number; priceLabel: string;
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number; sales: number;
 };
 const TIERS: TierCfg[] = [
-  { key: 'low', label: 'Low', price: 27, n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
-  { key: 'mid', label: 'Mid', price: 297, n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
-  { key: 'high', label: 'High', price: 1497, n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
+  { key: 'low', label: 'Low', price: 17, priceLabel: '$17', n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
+  { key: 'mid', label: 'Mid', price: 497, priceLabel: '$497/mo', n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
+  { key: 'high', label: 'High', price: 15000, priceLabel: '$15,000', n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
 ];
 
 type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
@@ -75,7 +81,7 @@ export default function LadderD4aAd() {
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const paths = useMemo(() => tiles.map(threadPath), [tiles]);
-  const { tally, feed } = useLiveTally({ baseRevenue: 34074, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
+  const { tally, feed } = useLiveTally({ baseRevenue: 160681, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
   const revenue = useCountUp(tally.revenue);
 
   const top = feed[0];
@@ -87,6 +93,25 @@ export default function LadderD4aAd() {
     for (let i = recent.length - 1; i >= 0; i--) m[recent[i].leadNo % TILE_COUNT] = recent[i].outcome;
     return m;
   }, [feed]);
+
+  // Brain orb: idle green sphere; on each sale (≥5s apart) it spins up the
+  // loading ring in the selling tier's colour, then settles back.
+  const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: IDLE_COLOR });
+  const lastOrbKey = useRef<number | null>(null);
+  const lastLoadAt = useRef(0);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const ev = feed[0];
+    if (!ev || lastOrbKey.current === ev.key) return;
+    lastOrbKey.current = ev.key;
+    const now = performance.now();
+    if (now - lastLoadAt.current < SALE_MIN_MS) return;
+    lastLoadAt.current = now;
+    const color = TIER_ORB_COLOR[tiles[ev.leadNo % TILE_COUNT].tier.key] ?? IDLE_COLOR;
+    setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
+    settleRef.current = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), LOAD_MS);
+  }, [feed, tiles]);
+  useEffect(() => () => { if (settleRef.current) clearTimeout(settleRef.current); }, []);
 
   return (
     <main style={{ position: 'fixed', inset: 0, background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -137,9 +162,9 @@ export default function LadderD4aAd() {
               }}>
               <header style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', background: isBuy ? T.accent : T.surface, color: isBuy ? '#fff' : T.ink, borderBottom: `1px solid ${isBuy ? 'transparent' : T.line}`, transition: 'background 0.3s ease' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: isBuy ? '#fff' : T.ink2 }}>
-                  {t.tier.label} <span style={{ color: isBuy ? '#fff' : T.accentInk, fontWeight: 800 }}>${t.tier.price.toLocaleString()}</span>
+                  {t.tier.label} <span style={{ color: isBuy ? '#fff' : T.accentInk, fontWeight: 800 }}>{t.tier.priceLabel}</span>
                 </span>
-                <StatusPill outcome={outcome} price={t.tier.price} />
+                <StatusPill outcome={outcome} priceLabel={t.tier.priceLabel} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 30, background: '#fff' }}>
                 <iframe title={`ladder-d4a-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
@@ -156,28 +181,30 @@ export default function LadderD4aAd() {
           return (
             <div key={tier.key} style={{ position: 'absolute', left: tier.cx - 130, top: bottom + 18, width: 260, textAlign: 'center', zIndex: 30 }}>
               <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: 0.8, color: T.ink }}>
-                {tier.label.toUpperCase()} TICKET <span style={{ color: T.accentInk, fontWeight: 800 }}>· ${tier.price.toLocaleString()}</span>
+                {tier.label.toUpperCase()} TICKET <span style={{ color: T.accentInk, fontWeight: 800 }}>· {tier.priceLabel}</span>
               </div>
               <div style={{ fontSize: 13, fontWeight: 500, color: T.ink3, marginTop: 3 }}>{tier.sales} sales today</div>
             </div>
           );
         })}
 
-        {/* Core — emerald brain hero with the revenue inside (Instrument Serif) */}
-        <div key={top ? `core-${top.key}` : 'core'} style={{
-            position: 'absolute', left: CORE_CX - CORE_R, top: CORE_CY - CORE_R, width: CORE_R * 2, height: CORE_R * 2,
-            borderRadius: '50%', zIndex: 30,
-            background: 'radial-gradient(circle at 32% 28%, #8fe3bf 0%, #16A46C 46%, #0f6b43 100%)',
-            boxShadow: '0 28px 60px -16px rgba(12,61,38,0.5), 0 0 70px rgba(22,164,108,0.28), inset 0 4px 18px rgba(255,255,255,0.4)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            animation: 'ld4a-bump 0.8s ease-out',
+        {/* Core — particle-cluster brain (VoiceOrbCluster). Idle green sphere; each
+            sale spins the loading ring in the tier colour (≥5s apart). Not keyed,
+            so the canvas never remounts. */}
+        <div style={{
+            position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 30,
           }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.92)', textTransform: 'uppercase', letterSpacing: 1.6 }}>Revenue Today</div>
-          <div style={{ fontSize: 58, fontWeight: 800, color: '#fff', marginTop: 2, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>
-            ${Math.round(revenue).toLocaleString()}
-          </div>
-          <div style={{ marginTop: 14, background: 'rgba(8,46,31,0.32)', padding: '7px 18px', borderRadius: 999, fontSize: 12, fontWeight: 600, color: '#fff', border: '1px solid rgba(255,255,255,0.28)' }}>
-            1 AI · runs every tier
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.12} spin={0.5} morphSpeed={0.04} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} style={{ position: 'absolute', inset: 0 }} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            {/* green-tinted backing so the white revenue reads over the dense centre */}
+            <div style={{ position: 'absolute', width: 300, height: 210, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(8,40,28,0.5) 0%, rgba(8,40,28,0) 72%)' }} />
+            <div style={{ position: 'relative', fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.94)', textTransform: 'uppercase', letterSpacing: 1.6, textShadow: '0 2px 8px rgba(0,0,0,0.55)' }}>Revenue Today</div>
+            <div style={{ position: 'relative', fontSize: 56, fontWeight: 800, color: '#fff', marginTop: 2, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', textShadow: '0 3px 16px rgba(0,0,0,0.6)' }}>
+              ${Math.round(revenue).toLocaleString()}
+            </div>
+            <div style={{ position: 'relative', marginTop: 12, background: 'rgba(8,46,31,0.42)', padding: '7px 18px', borderRadius: 999, fontSize: 12, fontWeight: 600, color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+              1 AI · runs every tier
+            </div>
           </div>
         </div>
 
@@ -193,8 +220,8 @@ export default function LadderD4aAd() {
   );
 }
 
-function StatusPill({ outcome, price }: { outcome?: 'buy' | 'book'; price: number }) {
-  if (outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD ${price.toLocaleString()}</span>;
+function StatusPill({ outcome, priceLabel }: { outcome?: 'buy' | 'book'; priceLabel: string }) {
+  if (outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD {priceLabel}</span>;
   if (outcome === 'book') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>BOOKED</span>;
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: T.ink3 }}>
