@@ -26,6 +26,7 @@ const LOAD_MS = 2600;     // how long the loading ring holds per sale
 type TierCfg = {
   key: string;
   tag: string;
+  kind: string; // small context label next to the big price ('offer' / 'plan')
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number;
   orbColor: string;
   soldText: string; idleText: string;
@@ -34,8 +35,8 @@ type TierCfg = {
 };
 
 const TIERS: TierCfg[] = [
-  { key: 'low', tag: '$17', n: 4, cx: 800, w: 300, h: 195, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD $17', idleText: 'Selling…', footLabel: 'LOW TICKET · $17', statNote: '110 sold today', price: 17 },
-  { key: 'mid', tag: '$497/mo', n: 3, cx: 1400, w: 380, h: 260, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED $497/mo', idleText: 'Welcoming…', footLabel: 'MEMBERSHIP · $497/mo', statNote: '8 new members today', price: 497 },
+  { key: 'low', tag: '$17', kind: 'offer', n: 4, cx: 800, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…', footLabel: 'LOW TICKET · $17', statNote: '110 sold today', price: 17 },
+  { key: 'mid', tag: '$497/mo', kind: 'plan', n: 3, cx: 1400, w: 380, h: 264, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…', footLabel: 'MEMBERSHIP · $497/mo', statNote: '8 new members today', price: 497 },
 ];
 
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0); // 7
@@ -174,13 +175,14 @@ export default function MembershipAd() {
                 background: '#0f172a', boxShadow: hit ? '0 0 28px rgba(46,125,82,0.5)' : '0 8px 18px rgba(0,0,0,0.4)',
                 transition: 'border 0.3s ease, box-shadow 0.3s ease',
               }}>
-              <header style={{ height: 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: hit ? '#fff' : '#cbd5e1' }}>
-                  {t.tier.key === 'low' ? 'LOW' : 'MEMBER'} <span style={{ color: hit ? '#fff' : '#4ade80' }}>{t.tier.tag}</span>
+              <header style={{ height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                  <span style={{ fontSize: 25, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tier.tag}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: hit ? 'rgba(255,255,255,0.85)' : '#64748b' }}>{t.tier.kind}</span>
                 </span>
                 <StatusPill tier={t.tier} hit={hit} />
               </header>
-              <div style={{ width: '100%', height: t.tier.h - 26, background: '#fff' }}>
+              <div style={{ width: '100%', height: t.tier.h - 46, background: '#fff' }}>
                 <iframe title={`mbr-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
                   allow="autoplay" style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none', display: 'block' }} />
               </div>
@@ -230,9 +232,9 @@ export default function MembershipAd() {
 }
 
 function StatusPill({ tier, hit }: { tier: TierCfg; hit: boolean }) {
-  if (hit) return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>{tier.soldText}</span>;
+  if (hit) return <span style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.6 }}>{tier.soldText}</span>;
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>
       <span style={{ width: 6, height: 6, borderRadius: 3, background: '#94a3b8' }} className="pulse-glow" /> {tier.idleText}
     </span>
   );
