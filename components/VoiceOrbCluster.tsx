@@ -46,9 +46,9 @@ export interface VoiceOrbClusterProps {
   /** Sphere⇄ring morph lerp rate per frame (0.08 = default). Lower = slower transition. */
   morphSpeed?: number;
   /**
-   * Optional avatar image rendered as a circle in the cluster's center. The shell
-   * particles are carved out of the interior so the face stays clean, while the rim
-   * dots overlap the photo edge and spray outward — they orbit/pulse around it.
+   * Optional avatar image rendered as a circle in the cluster's center, IN FRONT of
+   * the particles (nothing draws over the face). The shell dots ring tightly around
+   * the avatar edge and spray outward — they orbit/pulse around its perimeter.
    */
   avatarSrc?: string;
   /** Avatar diameter as a fraction of canvas size. Default 0.46. */
@@ -393,6 +393,12 @@ export default function VoiceOrbCluster({
   const avatarPx = Math.round(size * avatarScale);
   return (
     <div className={className} style={{ position: "relative", width: size, height: size, ...style }}>
+      <canvas
+        ref={canvasRef}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+      />
+      {/* Avatar last in DOM → paints ON TOP of the particle canvas, so no dot ever
+          covers the face; the carved-out interior keeps the dots ringing the edge. */}
       <div
         style={{
           position: "absolute", left: "50%", top: "50%", width: avatarPx, height: avatarPx,
@@ -402,10 +408,6 @@ export default function VoiceOrbCluster({
       >
         <Image src={avatarSrc} alt="" fill sizes={`${avatarPx}px`} style={{ objectFit: "cover" }} />
       </div>
-      <canvas
-        ref={canvasRef}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-      />
     </div>
   );
 }

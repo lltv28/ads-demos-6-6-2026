@@ -15,7 +15,7 @@ const VARIANTS = [
   { slug: 'switchboard', name: '6 · Switchboard', aspect: '9:16 · record at 1080×1920', hook: 'Leads rain into the orb; the conversations it\'s holding scroll below.' },
   { slug: 'ladder', name: '7 · The Value Ladder', aspect: '16:9 · record at 1920×1080', hook: 'Sideways pyramid: a wide base of low-ticket funnels narrows up to a few high-ticket closes — one AI runs the whole ladder.' },
   { slug: 'ladder-d4a', name: '8 · Value Ladder · d4a', aspect: '16:9 · record at 1920×1080', hook: 'The Value Ladder in the d4a design system — warm white, Instrument Serif, emerald. The light/brand reinterpretation.' },
-  { slug: 'scenarios', name: '9 · Pick Your Path', aspect: '16:9 · record at 1920×1080', hook: 'Two selectable scenarios: "Products & Memberships" (low→mid) or "AI→High-Ticket" (chats→booked calls→$15k closes). A chooser flies into the matching live floor. Keys 1/2 pick, 0 back.' },
+  { slug: 'scenarios', name: '9 · Pick Your Path', aspect: '16:9 · record at 1920×1080', hook: 'One ladder, low-ticket always on. A focus toggle highlights either the $497/mo membership tier or the $15k high-ticket tier and dims the other. Click a tier or press 2 (mid) / 3 (high).' },
 ];
 
 export default function HiveIndex() {
