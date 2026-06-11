@@ -1,11 +1,9 @@
 'use client';
 
-// HIVE VARIANT · "Pick Your Path" — one screen, one ladder. The low-ticket base is
-// always lit; a focus toggle highlights EITHER the mid-ticket membership tier OR the
-// high-ticket tier and dims the other, so a non-techy viewer instantly sees where the
-// growth focus is. The avatar brain core powers it all (live sales flow to the lit
-// tiers only). Revenue climbs honestly: low/mid in small per-sale steps, high in rare
-// gated $15k jumps that land with the purple orb ring.
+// HIVE VARIANT · "The Membership Engine" — the value ladder, focused on memberships.
+// One AI sells a low-ticket entry offer ($17) and ascends those buyers into a recurring
+// $497/mo membership. The avatar brain core powers both columns; live sales flow back to
+// it on glowing Hive threads, and revenue climbs honestly in per-sale steps.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -25,28 +23,23 @@ const IDLE_COLOR = '#16A46C';
 const SALE_MIN_MS = 5000; // min gap between orb loadings
 const LOAD_MS = 2600;     // how long the loading ring holds per sale
 
-type Focus = 'mid' | 'high';
-
 type TierCfg = {
   key: string;
-  group: 'base' | 'mid' | 'high'; // 'base' (low) is always lit; mid/high toggle
   tag: string;
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number;
   orbColor: string;
   soldText: string; idleText: string;
   footLabel: string; statNote: string;
   price: number;
-  gated: boolean; // true = revenue only on the dramatized (≥5s) close, not every event
 };
 
 const TIERS: TierCfg[] = [
-  { key: 'low', group: 'base', tag: '$17', n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD $17', idleText: 'Selling…', footLabel: 'LOW TICKET · $17', statNote: '110 sold today', price: 17, gated: false },
-  { key: 'mid', group: 'mid', tag: '$497/mo', n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED $497/mo', idleText: 'Selling…', footLabel: 'MEMBERSHIP · $497/mo', statNote: '8 new members', price: 497, gated: false },
-  { key: 'high', group: 'high', tag: '$15,000', n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, orbColor: '#a855f7', soldText: 'SOLD $15,000', idleText: 'Closing…', footLabel: 'HIGH-TICKET · $15,000', statNote: '2 closed today', price: 15000, gated: true },
+  { key: 'low', tag: '$17', n: 4, cx: 800, w: 300, h: 195, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD $17', idleText: 'Selling…', footLabel: 'LOW TICKET · $17', statNote: '110 sold today', price: 17 },
+  { key: 'mid', tag: '$497/mo', n: 3, cx: 1400, w: 380, h: 260, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED $497/mo', idleText: 'Welcoming…', footLabel: 'MEMBERSHIP · $497/mo', statNote: '8 new members today', price: 497 },
 ];
 
-const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0); // 9
-const BASE_REVENUE = 35846; // 110×$17 + 8×$497 + 2×$15,000
+const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0); // 7
+const BASE_REVENUE = 5846; // 110×$17 + 8×$497
 
 type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
 
@@ -79,57 +72,38 @@ function threadPath(t: Tile): string {
   return `M ${sx} ${sy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`;
 }
 
-const isLit = (tier: TierCfg, focus: Focus) => tier.group === 'base' || tier.group === focus;
-
-export default function ScenariosAd() {
+export default function MembershipAd() {
   const fit = useFitStage();
   useRecordingChrome(BG);
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const paths = useMemo(() => tiles.map(threadPath), [tiles]);
-  const { feed } = useLiveTally({ baseRevenue: BASE_REVENUE, basePurchases: 120, baseCalls: 12, minMs: 1800, maxMs: 3000 });
-
-  // Focus toggle: low is always lit; this picks whether mid OR high is the second lit
-  // tier. Defaults to memberships. Keys 2 = mid, 3 = high (1 = low is always on).
-  const [focus, setFocus] = useState<Focus>('mid');
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === '2') setFocus('mid');
-      else if (e.key === '3') setFocus('high');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  const { feed } = useLiveTally({ baseRevenue: BASE_REVENUE, basePurchases: 118, baseCalls: 0, minMs: 1800, maxMs: 3000 });
 
   const top = feed[0];
   const pulseIdx = top ? top.leadNo % TILE_COUNT : 0;
-  const topLit = top ? isLit(tiles[pulseIdx].tier, focus) : false;
 
-  // Only LIT tiles show live activity, so the focused path visibly carries the action.
+  // The newest few events keep their tiles flashing SOLD, in sync with the money pulse.
   const soldByTile = useMemo(() => {
     const m: Record<number, true> = {};
-    for (const ev of feed.slice(0, 4)) {
-      const idx = ev.leadNo % TILE_COUNT;
-      if (isLit(tiles[idx].tier, focus)) m[idx] = true;
-    }
+    for (const ev of feed.slice(0, 4)) m[ev.leadNo % TILE_COUNT] = true;
     return m;
-  }, [feed, tiles, focus]);
+  }, [feed]);
 
-  // Honest revenue: lit, non-gated tiers (low/mid) add on every sale; the gated high
-  // tier adds $15k only on a dramatized close inside the orb effect.
+  // Honest revenue: each sale adds its tile's tier price ($17 or $497).
   const [revenue, setRevenue] = useState(BASE_REVENUE);
   const lastRevKey = useRef<number | null>(null);
   useEffect(() => {
     const ev = feed[0];
     if (!ev || lastRevKey.current === ev.key) return;
     lastRevKey.current = ev.key;
-    const tier = tiles[ev.leadNo % TILE_COUNT].tier;
-    if (isLit(tier, focus) && !tier.gated && tier.price > 0) setTimeout(() => setRevenue((r) => r + tier.price), 0);
-  }, [feed, tiles, focus]);
+    const price = tiles[ev.leadNo % TILE_COUNT].tier.price;
+    if (price > 0) setTimeout(() => setRevenue((r) => r + price), 0);
+  }, [feed, tiles]);
   const revDisplay = useCountUp(revenue);
 
-  // Brain orb: idle green sphere; on each LIT sale it spins the loading ring in the
-  // tier's colour, then settles. ≥5s between loadings. A gated close books its $15k here.
+  // Brain orb: idle green sphere; on each sale spins up the loading ring in the tier's
+  // colour for LOAD_MS, then settles. ≥5s between loadings.
   const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: IDLE_COLOR });
   const lastOrbKey = useRef<number | null>(null);
   const lastLoadAt = useRef(0);
@@ -138,16 +112,13 @@ export default function ScenariosAd() {
     const ev = feed[0];
     if (!ev || lastOrbKey.current === ev.key) return;
     lastOrbKey.current = ev.key;
-    const tier = tiles[ev.leadNo % TILE_COUNT].tier;
-    if (!isLit(tier, focus)) return; // dimmed tiers don't fire the brain
     const now = performance.now();
     if (now - lastLoadAt.current < SALE_MIN_MS) return;
     lastLoadAt.current = now;
-    const color = tier.orbColor ?? IDLE_COLOR;
+    const color = tiles[ev.leadNo % TILE_COUNT].tier.orbColor ?? IDLE_COLOR;
     setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
     settleRef.current = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), LOAD_MS);
-    if (tier.gated && tier.price > 0) setTimeout(() => setRevenue((r) => r + tier.price), 0);
-  }, [feed, tiles, focus]);
+  }, [feed, tiles]);
   useEffect(() => () => { if (settleRef.current) clearTimeout(settleRef.current); }, []);
 
   return (
@@ -165,32 +136,27 @@ export default function ScenariosAd() {
           <span style={{ width: 16, height: 16, borderRadius: 999, background: C.green, boxShadow: '0 0 12px rgba(46,125,82,0.8)' }} className="pulse-glow" />
           <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff' }}>Lucas AI Core</span>
           <span style={{ color: '#334155' }}>·</span>
-          <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#64748b' }}>The Value Ladder</span>
+          <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#64748b' }}>The Membership Engine</span>
         </header>
 
-        {/* Focus toggle (top-right) */}
-        <div style={{ position: 'absolute', top: 30, right: 44, zIndex: 45, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#64748b' }}>Where&rsquo;s the growth focus?</span>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <FocusButton active={focus === 'mid'} accent="#f59e0b" title="Memberships" sub="$497/mo" onClick={() => setFocus('mid')} />
-            <FocusButton active={focus === 'high'} accent="#a855f7" title="High-Ticket" sub="$15,000" onClick={() => setFocus('high')} />
+        {/* Flow caption (top-right) */}
+        <div style={{ position: 'absolute', top: 38, right: 48, zIndex: 40, textAlign: 'right' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', letterSpacing: 0.3 }}>
+            <span style={{ color: '#38bdf8' }}>$17 buyers</span> → <span style={{ color: '#f59e0b' }}>$497/mo members</span>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>Low-ticket base · $17 always on</span>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 2 }}>one AI sells the offer and ascends them</div>
         </div>
 
-        {/* Glowing curved threads + money pulse (dim to dimmed tiles) */}
+        {/* Glowing curved threads + money pulse */}
         <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
-          {paths.map((d, i) => {
-            const dim = !isLit(tiles[i].tier, focus);
-            return (
-              <g key={i} style={{ opacity: dim ? 0.16 : 1, transition: 'opacity 0.45s ease' }}>
-                <path d={d} stroke="rgba(255,255,255,0.05)" strokeWidth={5} fill="none" />
-                <path d={d} stroke="rgba(46,125,82,0.3)" strokeWidth={2} fill="none" />
-                <path d={d} stroke="rgba(46,125,82,0.8)" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeDasharray="14 240" className="ladder-flow" style={{ animationDelay: `${i * 0.25}s` }} />
-              </g>
-            );
-          })}
-          {top && topLit && (
+          {paths.map((d, i) => (
+            <g key={i}>
+              <path d={d} stroke="rgba(255,255,255,0.05)" strokeWidth={5} fill="none" />
+              <path d={d} stroke="rgba(46,125,82,0.3)" strokeWidth={2} fill="none" />
+              <path d={d} stroke="rgba(46,125,82,0.8)" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeDasharray="14 240" className="ladder-flow" style={{ animationDelay: `${i * 0.25}s` }} />
+            </g>
+          ))}
+          {top && (
             <path key={top.key} d={paths[pulseIdx]} stroke="#4ade80" strokeWidth={10} fill="none" strokeLinecap="round" strokeDasharray="40 2000" className="ladder-inbound"
               style={{ filter: 'drop-shadow(0 0 8px rgba(74,222,128,0.8))' }} />
           )}
@@ -199,43 +165,35 @@ export default function ScenariosAd() {
         {/* Tiles */}
         {tiles.map((t) => {
           const lead = leads[t.leadId];
-          const lit = isLit(t.tier, focus);
           const hit = !!soldByTile[t.leadId];
-          const clickable = t.tier.group !== 'base';
           return (
-            <article key={t.leadId}
-              onClick={clickable ? () => setFocus(t.tier.group as Focus) : undefined}
-              style={{
+            <article key={t.leadId} style={{
                 position: 'absolute', left: t.left, top: t.top, width: t.tier.w, height: t.tier.h,
                 borderRadius: 12, overflow: 'hidden', zIndex: 20,
-                cursor: clickable && !lit ? 'pointer' : 'default',
-                opacity: lit ? 1 : 0.24,
-                filter: lit ? 'none' : 'grayscale(0.85) brightness(0.85)',
                 border: hit ? `4px solid ${C.green}` : '2px solid #334155',
                 background: '#0f172a', boxShadow: hit ? '0 0 28px rgba(46,125,82,0.5)' : '0 8px 18px rgba(0,0,0,0.4)',
-                transition: 'opacity 0.45s ease, filter 0.45s ease, border 0.3s ease, box-shadow 0.3s ease',
+                transition: 'border 0.3s ease, box-shadow 0.3s ease',
               }}>
               <header style={{ height: 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
                 <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: hit ? '#fff' : '#cbd5e1' }}>
-                  {t.tier.footLabel.split(' · ')[0].replace(' TICKET', '').replace('MEMBERSHIP', 'MID')} <span style={{ color: hit ? '#fff' : '#4ade80' }}>{t.tier.tag}</span>
+                  {t.tier.key === 'low' ? 'LOW' : 'MEMBER'} <span style={{ color: hit ? '#fff' : '#4ade80' }}>{t.tier.tag}</span>
                 </span>
                 <StatusPill tier={t.tier} hit={hit} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 26, background: '#fff' }}>
-                <iframe title={`scn-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
+                <iframe title={`mbr-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
                   allow="autoplay" style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none', display: 'block' }} />
               </div>
             </article>
           );
         })}
 
-        {/* Per-tier footers (dim with their column) */}
+        {/* Per-tier footers */}
         {TIERS.map((tier) => {
           const totalH = tier.n * tier.h + (tier.n - 1) * tier.gap;
           const bottom = CORE_CY + totalH / 2;
-          const lit = isLit(tier, focus);
           return (
-            <div key={tier.key} style={{ position: 'absolute', left: tier.cx - 140, top: bottom + 16, width: 280, textAlign: 'center', zIndex: 30, opacity: lit ? 1 : 0.32, transition: 'opacity 0.45s ease' }}>
+            <div key={tier.key} style={{ position: 'absolute', left: tier.cx - 140, top: bottom + 16, width: 280, textAlign: 'center', zIndex: 30 }}>
               <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 1, color: '#e2e8f0' }}>{tier.footLabel}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 2 }}>{tier.statNote}</div>
             </div>
@@ -254,7 +212,7 @@ export default function ScenariosAd() {
                 </div>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.42)', padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
-                1 AI · runs every tier
+                1 AI · sells &amp; ascends to membership
               </div>
             </div>
           </div>
@@ -268,23 +226,6 @@ export default function ScenariosAd() {
         `}</style>
       </div>
     </main>
-  );
-}
-
-function FocusButton({ active, accent, title, sub, onClick }: { active: boolean; accent: string; title: string; sub: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-        cursor: 'pointer', textAlign: 'left', minWidth: 150,
-        display: 'flex', flexDirection: 'column', gap: 1,
-        padding: '10px 16px', borderRadius: 12,
-        background: active ? `${accent}26` : 'rgba(255,255,255,0.05)',
-        border: `2px solid ${active ? accent : 'rgba(148,163,184,0.22)'}`,
-        boxShadow: active ? `0 0 22px ${accent}44` : 'none',
-        transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
-      }}>
-      <span style={{ fontSize: 15, fontWeight: 800, color: active ? '#fff' : '#cbd5e1' }}>{title}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: active ? accent : '#64748b' }}>{sub}</span>
-    </button>
   );
 }
 
