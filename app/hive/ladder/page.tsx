@@ -20,15 +20,17 @@ const ORB_SIZE = 580; // VoiceOrbCluster canvas (cluster ≈0.52 of it → ~150p
 const IDLE_COLOR = '#16A46C'; // resting brain colour (Kodara green)
 // On a sale the orb flashes the loading ring in the tier's colour:
 const TIER_ORB_COLOR: Record<string, string> = { low: '#38bdf8', mid: '#f59e0b', high: '#a855f7' };
+const SALE_MIN_MS = 5000; // minimum gap between orb loadings (≥5s between "sales")
+const LOAD_MS = 2600;     // how long the loading ring holds per sale
 
 type TierCfg = {
-  key: string; label: string; price: number;
+  key: string; label: string; price: number; priceLabel: string;
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number; sales: number;
 };
 const TIERS: TierCfg[] = [
-  { key: 'low', label: 'Low', price: 27, n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
-  { key: 'mid', label: 'Mid', price: 297, n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
-  { key: 'high', label: 'High', price: 1497, n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
+  { key: 'low', label: 'Low', price: 17, priceLabel: '$17', n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
+  { key: 'mid', label: 'Mid', price: 497, priceLabel: '$497/mo', n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
+  { key: 'high', label: 'High', price: 15000, priceLabel: '$15,000', n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
 ];
 
 type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
@@ -71,7 +73,7 @@ export default function LadderAd() {
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const paths = useMemo(() => tiles.map(threadPath), [tiles]);
-  const { tally, feed } = useLiveTally({ baseRevenue: 34074, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
+  const { tally, feed } = useLiveTally({ baseRevenue: 160681, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
   const revenue = useCountUp(tally.revenue);
 
   const top = feed[0];
@@ -92,15 +94,23 @@ export default function LadderAd() {
   // up the loading ring (processing) in the selling tier's colour, then settles.
   const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: IDLE_COLOR });
   const lastOrbKey = useRef<number | null>(null);
+  const lastLoadAt = useRef(0);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const ev = feed[0];
     if (!ev || lastOrbKey.current === ev.key) return;
     lastOrbKey.current = ev.key;
+    // Enforce a ≥5s gap between loadings, independent of the feed cadence.
+    const now = performance.now();
+    if (now - lastLoadAt.current < SALE_MIN_MS) return;
+    lastLoadAt.current = now;
     const color = TIER_ORB_COLOR[tiles[ev.leadNo % TILE_COUNT].tier.key] ?? IDLE_COLOR;
-    const enter = setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
-    const settle = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), 2600);
-    return () => { clearTimeout(enter); clearTimeout(settle); };
+    // No effect-cleanup cancel: gated events return early, and loadings are ≥5s
+    // apart while the ring holds LOAD_MS (<5s), so the settle never overlaps.
+    setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
+    settleRef.current = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), LOAD_MS);
   }, [feed, tiles]);
+  useEffect(() => () => { if (settleRef.current) clearTimeout(settleRef.current); }, []);
 
   return (
     <main style={{ position: 'fixed', inset: 0, background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -150,9 +160,9 @@ export default function LadderAd() {
               }}>
               <header style={{ height: 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: isBuy ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
                 <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: isBuy ? '#fff' : '#cbd5e1' }}>
-                  {t.tier.label} <span style={{ color: isBuy ? '#fff' : '#4ade80' }}>${t.tier.price.toLocaleString()}</span>
+                  {t.tier.label} <span style={{ color: isBuy ? '#fff' : '#4ade80' }}>{t.tier.priceLabel}</span>
                 </span>
-                <StatusPill outcome={outcome} price={t.tier.price} />
+                <StatusPill outcome={outcome} priceLabel={t.tier.priceLabel} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 26, background: '#fff' }}>
                 <iframe title={`ladder-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
@@ -169,7 +179,7 @@ export default function LadderAd() {
           return (
             <div key={tier.key} style={{ position: 'absolute', left: tier.cx - 130, top: bottom + 16, width: 260, textAlign: 'center', zIndex: 30 }}>
               <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 1, color: '#e2e8f0' }}>
-                {tier.label.toUpperCase()} TICKET <span style={{ color: '#4ade80' }}>· ${tier.price.toLocaleString()}</span>
+                {tier.label.toUpperCase()} TICKET <span style={{ color: '#4ade80' }}>· {tier.priceLabel}</span>
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 2 }}>{tier.sales} sales today</div>
             </div>
@@ -208,8 +218,8 @@ export default function LadderAd() {
   );
 }
 
-function StatusPill({ outcome, price }: { outcome?: 'buy' | 'book'; price: number }) {
-  if (outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD ${price.toLocaleString()}</span>;
+function StatusPill({ outcome, priceLabel }: { outcome?: 'buy' | 'book'; priceLabel: string }) {
+  if (outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD {priceLabel}</span>;
   if (outcome === 'book') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>BOOKED</span>;
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
