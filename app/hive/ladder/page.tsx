@@ -98,7 +98,7 @@ export default function LadderAd() {
     lastOrbKey.current = ev.key;
     const color = TIER_ORB_COLOR[tiles[ev.leadNo % TILE_COUNT].tier.key] ?? IDLE_COLOR;
     const enter = setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
-    const settle = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), 1100);
+    const settle = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), 2600);
     return () => { clearTimeout(enter); clearTimeout(settle); };
   }, [feed, tiles]);
 
@@ -182,7 +182,7 @@ export default function LadderAd() {
         <div style={{
             position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 30,
           }}>
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.22} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} style={{ position: 'absolute', inset: 0 }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.12} spin={0.5} morphSpeed={0.04} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} style={{ position: 'absolute', inset: 0 }} />
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             {/* soft dark backing so the white revenue reads over the green particles */}
             <div style={{ position: 'absolute', width: 300, height: 210, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(4,14,9,0.62) 0%, rgba(4,14,9,0) 72%)' }} />

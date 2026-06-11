@@ -40,6 +40,10 @@ export interface VoiceOrbClusterProps {
   size?: number;
   /** Number of particles. Default 560. */
   count?: number;
+  /** Rotation speed multiplier (1 = default). Lower = slower spin. */
+  spin?: number;
+  /** Sphere⇄ring morph lerp rate per frame (0.08 = default). Lower = slower transition. */
+  morphSpeed?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -130,6 +134,8 @@ export default function VoiceOrbCluster({
   idleColor,
   size = 320,
   count = 560,
+  spin = 1,
+  morphSpeed = 0.08,
   className,
   style,
 }: VoiceOrbClusterProps) {
@@ -138,6 +144,8 @@ export default function VoiceOrbCluster({
   const speakerRef = useRef(speaker);
   const levelRef   = useRef(level);
   const sizeRef    = useRef(size);
+  const spinRef    = useRef(spin);
+  const morphRef   = useRef(morphSpeed);
 
   const userRamp = useRef(buildRamp(userColor));
   const aiRamp   = useRef(buildRamp(aiColor));
@@ -147,6 +155,8 @@ export default function VoiceOrbCluster({
     speakerRef.current = speaker;
     levelRef.current   = level;
     sizeRef.current    = size;
+    spinRef.current    = spin;
+    morphRef.current   = morphSpeed;
     userRamp.current   = buildRamp(userColor);
     aiRamp.current     = buildRamp(aiColor);
     idleRamp.current   = buildRamp(idleColor ?? aiColor);
@@ -276,9 +286,9 @@ export default function VoiceOrbCluster({
 
       /* ring morph */
       const processing = sp === "processing" || sp === "user-processing";
-      morph     += ((processing ? 1 : 0) - morph) * 0.08;
-      ay        += dt * (0.25 + lvl * 2.6);
-      ringPhase += dt * (processing ? 1.6 : 0.4);
+      morph     += ((processing ? 1 : 0) - morph) * morphRef.current;
+      ay        += dt * (0.25 + lvl * 2.6) * spinRef.current;
+      ringPhase += dt * (processing ? 1.6 : 0.4) * spinRef.current;
 
       ctx.clearRect(0, 0, S, S);
 
