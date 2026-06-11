@@ -4,6 +4,7 @@
 // A self-contained canvas particle-cluster orb — sphere ⇄ ring morph, audio- or
 // level-reactive, with smooth color crossfades. No external dependencies.
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 
 /* -------------------------------------------------------------------------- */
@@ -44,6 +45,14 @@ export interface VoiceOrbClusterProps {
   spin?: number;
   /** Sphere⇄ring morph lerp rate per frame (0.08 = default). Lower = slower transition. */
   morphSpeed?: number;
+  /**
+   * Optional avatar image rendered as a circle in the cluster's center. The shell
+   * particles are carved out of the interior so the face stays clean, while the rim
+   * dots overlap the photo edge and spray outward — they orbit/pulse around it.
+   */
+  avatarSrc?: string;
+  /** Avatar diameter as a fraction of canvas size. Default 0.46. */
+  avatarScale?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -136,6 +145,8 @@ export default function VoiceOrbCluster({
   count = 560,
   spin = 1,
   morphSpeed = 0.08,
+  avatarSrc,
+  avatarScale = 0.46,
   className,
   style,
 }: VoiceOrbClusterProps) {
@@ -146,6 +157,8 @@ export default function VoiceOrbCluster({
   const sizeRef    = useRef(size);
   const spinRef    = useRef(spin);
   const morphRef   = useRef(morphSpeed);
+  const avatarOnRef    = useRef(!!avatarSrc);
+  const avatarScaleRef = useRef(avatarScale);
 
   const userRamp = useRef(buildRamp(userColor));
   const aiRamp   = useRef(buildRamp(aiColor));
@@ -157,6 +170,8 @@ export default function VoiceOrbCluster({
     sizeRef.current    = size;
     spinRef.current    = spin;
     morphRef.current   = morphSpeed;
+    avatarOnRef.current    = !!avatarSrc;
+    avatarScaleRef.current = avatarScale;
     userRamp.current   = buildRamp(userColor);
     aiRamp.current     = buildRamp(aiColor);
     idleRamp.current   = buildRamp(idleColor ?? aiColor);
@@ -325,8 +340,17 @@ export default function VoiceOrbCluster({
 
       proj.sort((a, b) => a.rz - b.rz);
 
+      // carve the interior so an avatar (if any) shows through cleanly: drop dots
+      // landing inside 0.8× the avatar radius, keep the rim band + outward spray.
+      const avatarOn = avatarOnRef.current;
+      const rInnerSq = avatarOn ? Math.pow(S * avatarScaleRef.current * 0.5 * 0.8, 2) : 0;
+
       for (let k = 0; k < proj.length; k++) {
         const q  = proj[k];
+        if (avatarOn) {
+          const dx = q.sx - C, dy = q.sy - C;
+          if (dx * dx + dy * dy < rInnerSq) continue;
+        }
         const vt = (q.ry + 1) * 0.5;
         let c = vt < 0.5
           ? mix3(cur.deep, cur.brand, vt * 2)
@@ -356,11 +380,32 @@ export default function VoiceOrbCluster({
     };
   }, []);
 
+  if (!avatarSrc) {
+    return (
+      <canvas
+        ref={canvasRef}
+        className={className}
+        style={{ width: size, height: size, display: "block", ...style }}
+      />
+    );
+  }
+
+  const avatarPx = Math.round(size * avatarScale);
   return (
-    <canvas
-      ref={canvasRef}
-      className={className}
-      style={{ width: size, height: size, display: "block", ...style }}
-    />
+    <div className={className} style={{ position: "relative", width: size, height: size, ...style }}>
+      <div
+        style={{
+          position: "absolute", left: "50%", top: "50%", width: avatarPx, height: avatarPx,
+          transform: "translate(-50%, -50%)", borderRadius: "50%", overflow: "hidden",
+          boxShadow: "0 0 0 2px rgba(255,255,255,0.14), 0 8px 28px rgba(0,0,0,0.45)",
+        }}
+      >
+        <Image src={avatarSrc} alt="" fill sizes={`${avatarPx}px`} style={{ objectFit: "cover" }} />
+      </div>
+      <canvas
+        ref={canvasRef}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+      />
+    </div>
   );
 }

@@ -13,10 +13,13 @@ import {
   useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
 import VoiceOrbCluster, { type Speaker } from '@/components/VoiceOrbCluster';
+import { asset } from '@/lib/basePath';
 
 const BG = '#0f172a';
 const CORE_CX = 250, CORE_CY = STAGE_H / 2, CORE_R = 150;
 const ORB_SIZE = 580; // VoiceOrbCluster canvas (cluster ≈0.52 of it → ~150px radius, matches the old orb), centred on the core
+const AVATAR_SCALE = 0.46;                       // avatar diameter as fraction of the orb canvas
+const AVATAR_R = (ORB_SIZE * AVATAR_SCALE) / 2;  // ≈133px — used to drop the revenue card just below the face
 const IDLE_COLOR = '#16A46C'; // resting brain colour (Kodara green)
 // On a sale the orb flashes the loading ring in the tier's colour:
 const TIER_ORB_COLOR: Record<string, string> = { low: '#38bdf8', mid: '#f59e0b', high: '#a855f7' };
@@ -192,16 +195,19 @@ export default function LadderAd() {
         <div style={{
             position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 30,
           }}>
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.12} spin={0.5} morphSpeed={0.04} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} style={{ position: 'absolute', inset: 0 }} />
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            {/* soft dark backing so the white revenue reads over the green particles */}
-            <div style={{ position: 'absolute', width: 300, height: 210, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(4,14,9,0.62) 0%, rgba(4,14,9,0) 72%)' }} />
-            <div style={{ position: 'relative', fontSize: 16, fontWeight: 800, color: 'rgba(255,255,255,0.92)', textTransform: 'uppercase', letterSpacing: 1.5, textShadow: '0 2px 8px rgba(0,0,0,0.75)' }}>Revenue Today</div>
-            <div style={{ position: 'relative', fontSize: 56, fontWeight: 800, color: '#fff', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1, textShadow: '0 3px 16px rgba(0,0,0,0.85)' }}>
-              ${Math.round(revenue).toLocaleString()}
-            </div>
-            <div style={{ position: 'relative', marginTop: 12, background: 'rgba(0,0,0,0.42)', padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
-              1 AI · runs every tier
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.12} spin={0.5} morphSpeed={0.04} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} avatarSrc={asset('/profilepicnew.png')} avatarScale={AVATAR_SCALE} style={{ position: 'absolute', inset: 0 }} />
+          {/* Revenue card sits just below the AI advisor's face (the orb's clean center). */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: '50%', top: `calc(50% + ${AVATAR_R + 22}px)`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ background: 'rgba(4,14,9,0.66)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 16, padding: '10px 22px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 34px rgba(0,0,0,0.5)' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Revenue Today</div>
+                <div style={{ fontSize: 44, fontWeight: 800, color: '#fff', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                  ${Math.round(revenue).toLocaleString()}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.42)', padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
+                1 AI · runs every tier
+              </div>
             </div>
           </div>
         </div>
