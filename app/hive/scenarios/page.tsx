@@ -26,7 +26,6 @@ const LOAD_MS = 2600;     // how long the loading ring holds per sale
 type TierCfg = {
   key: string;
   tag: string;
-  kind: string; // small context label next to the big price ('offer' / 'plan')
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number;
   orbColor: string;
   soldText: string; idleText: string;
@@ -35,8 +34,8 @@ type TierCfg = {
 };
 
 const TIERS: TierCfg[] = [
-  { key: 'low', tag: '$17', kind: 'offer', n: 4, cx: 800, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…', footLabel: 'LOW TICKET · $17', statNote: '110 sold today', price: 17 },
-  { key: 'mid', tag: '$497/mo', kind: 'plan', n: 3, cx: 1400, w: 380, h: 264, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…', footLabel: 'MEMBERSHIP · $497/mo', statNote: '8 new members today', price: 497 },
+  { key: 'low', tag: '$17', n: 4, cx: 800, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…', footLabel: '$17', statNote: '110 sold today', price: 17 },
+  { key: 'mid', tag: '$497/mo', n: 3, cx: 1400, w: 380, h: 264, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…', footLabel: '$497/mo', statNote: '8 new members today', price: 497 },
 ];
 
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0); // 7
@@ -136,17 +135,7 @@ export default function MembershipAd() {
         <header style={{ position: 'absolute', top: 34, left: 48, display: 'flex', alignItems: 'center', gap: 14, zIndex: 40 }}>
           <span style={{ width: 16, height: 16, borderRadius: 999, background: C.green, boxShadow: '0 0 12px rgba(46,125,82,0.8)' }} className="pulse-glow" />
           <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff' }}>Lucas AI Core</span>
-          <span style={{ color: '#334155' }}>·</span>
-          <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#64748b' }}>The Membership Engine</span>
         </header>
-
-        {/* Flow caption (top-right) */}
-        <div style={{ position: 'absolute', top: 38, right: 48, zIndex: 40, textAlign: 'right' }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', letterSpacing: 0.3 }}>
-            <span style={{ color: '#38bdf8' }}>$17 buyers</span> → <span style={{ color: '#f59e0b' }}>$497/mo members</span>
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 2 }}>one AI sells the offer and ascends them</div>
-        </div>
 
         {/* Glowing curved threads + money pulse */}
         <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
@@ -176,10 +165,7 @@ export default function MembershipAd() {
                 transition: 'border 0.3s ease, box-shadow 0.3s ease',
               }}>
               <header style={{ height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                  <span style={{ fontSize: 25, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tier.tag}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: hit ? 'rgba(255,255,255,0.85)' : '#64748b' }}>{t.tier.kind}</span>
-                </span>
+                <span style={{ fontSize: 25, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tier.tag}</span>
                 <StatusPill tier={t.tier} hit={hit} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 46, background: '#fff' }}>
@@ -212,9 +198,6 @@ export default function MembershipAd() {
                 <div style={{ fontSize: 44, fontWeight: 800, color: '#fff', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                   ${Math.round(revDisplay).toLocaleString()}
                 </div>
-              </div>
-              <div style={{ background: 'rgba(0,0,0,0.42)', padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
-                1 AI · sells &amp; ascends to membership
               </div>
             </div>
           </div>
