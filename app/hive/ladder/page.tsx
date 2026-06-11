@@ -6,17 +6,20 @@
 // → a few high-ticket. Signature Hive glowing curved threads carry money pulses
 // back to the brain on every sale. Dark green-on-dark palette.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   STAGE_W, STAGE_H, C,
   createLeads, buildFunnelSrc,
   useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
-import VoiceOrbCluster from '@/components/VoiceOrbCluster';
+import VoiceOrbCluster, { type Speaker } from '@/components/VoiceOrbCluster';
 
 const BG = '#0f172a';
 const CORE_CX = 250, CORE_CY = STAGE_H / 2, CORE_R = 150;
 const ORB_SIZE = 580; // VoiceOrbCluster canvas (cluster ≈0.52 of it → ~150px radius, matches the old orb), centred on the core
+const IDLE_COLOR = '#16A46C'; // resting brain colour (Kodara green)
+// On a sale the orb flashes the loading ring in the tier's colour:
+const TIER_ORB_COLOR: Record<string, string> = { low: '#38bdf8', mid: '#f59e0b', high: '#a855f7' };
 
 type TierCfg = {
   key: string; label: string; price: number;
@@ -84,6 +87,20 @@ export default function LadderAd() {
     for (let i = recent.length - 1; i >= 0; i--) m[recent[i].leadNo % TILE_COUNT] = recent[i].outcome;
     return m;
   }, [feed]);
+
+  // Brain orb state machine: rests as a green idle sphere; on each sale it spins
+  // up the loading ring (processing) in the selling tier's colour, then settles.
+  const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: IDLE_COLOR });
+  const lastOrbKey = useRef<number | null>(null);
+  useEffect(() => {
+    const ev = feed[0];
+    if (!ev || lastOrbKey.current === ev.key) return;
+    lastOrbKey.current = ev.key;
+    const color = TIER_ORB_COLOR[tiles[ev.leadNo % TILE_COUNT].tier.key] ?? IDLE_COLOR;
+    const enter = setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
+    const settle = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), 1100);
+    return () => { clearTimeout(enter); clearTimeout(settle); };
+  }, [feed, tiles]);
 
   return (
     <main style={{ position: 'fixed', inset: 0, background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -159,12 +176,13 @@ export default function LadderAd() {
           );
         })}
 
-        {/* Core (left) — particle-cluster brain (VoiceOrbCluster) with revenue overlaid */}
-        <div key={top ? `core-${top.key}` : 'core'} style={{
-            position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE,
-            zIndex: 30, animation: 'ladder-bump 0.8s ease-out',
+        {/* Core (left) — particle-cluster brain. Idle = calm green sphere; on each
+            sale it spins up the loading ring in that tier's colour, then settles.
+            Not keyed, so the canvas never remounts. */}
+        <div style={{
+            position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 30,
           }}>
-          <VoiceOrbCluster speaker="idle" level={0.25} size={ORB_SIZE} count={640} aiColor="#16A46C" idleColor="#22c55e" style={{ position: 'absolute', inset: 0 }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.22} size={ORB_SIZE} count={640} aiColor={orb.color} idleColor={IDLE_COLOR} style={{ position: 'absolute', inset: 0 }} />
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             {/* soft dark backing so the white revenue reads over the green particles */}
             <div style={{ position: 'absolute', width: 300, height: 210, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(4,14,9,0.62) 0%, rgba(4,14,9,0) 72%)' }} />
