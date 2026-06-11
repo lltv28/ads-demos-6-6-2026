@@ -9,9 +9,8 @@
 import { useMemo } from 'react';
 import {
   STAGE_W, STAGE_H, C,
-  createLeads, buildFunnelSrc, saleLabel,
-  useFitStage, useRecordingChrome, useLiveTally, useRealTileOutcomes, useCountUp,
-  type Outcome,
+  createLeads, buildFunnelSrc,
+  useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
 
 const BG = '#0f172a';
@@ -22,9 +21,9 @@ type TierCfg = {
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number; sales: number;
 };
 const TIERS: TierCfg[] = [
-  { key: 'low', label: 'Low', price: 27, n: 7, cx: 580, w: 250, h: 120, gap: 16, demoScale: 0.42, sales: 312 },
-  { key: 'mid', label: 'Mid', price: 297, n: 5, cx: 1040, w: 280, h: 150, gap: 18, demoScale: 0.5, sales: 41 },
-  { key: 'high', label: 'High', price: 1497, n: 3, cx: 1500, w: 320, h: 210, gap: 24, demoScale: 0.6, sales: 9 },
+  { key: 'low', label: 'Low', price: 27, n: 4, cx: 620, w: 300, h: 200, gap: 18, demoScale: 0.6, sales: 312 },
+  { key: 'mid', label: 'Mid', price: 297, n: 3, cx: 1080, w: 340, h: 240, gap: 20, demoScale: 0.6, sales: 41 },
+  { key: 'high', label: 'High', price: 1497, n: 2, cx: 1540, w: 380, h: 320, gap: 24, demoScale: 0.6, sales: 9 },
 ];
 
 type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
@@ -67,12 +66,22 @@ export default function LadderAd() {
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const paths = useMemo(() => tiles.map(threadPath), [tiles]);
-  const outcomes = useRealTileOutcomes();
   const { tally, feed } = useLiveTally({ baseRevenue: 34074, basePurchases: 362, baseCalls: 40, minMs: 2000, maxMs: 3400 });
   const revenue = useCountUp(tally.revenue);
 
   const top = feed[0];
   const pulseIdx = top ? top.leadNo % TILE_COUNT : 0;
+
+  // The embedded funnel is the same low-ticket demo on every tile, so a tile's
+  // SOLD value comes from its TIER, not the funnel. Each recent live-tally event
+  // marks its tile as just-sold (in sync with the money pulse); the newest few
+  // events keep a handful of tiles flashing SOLD at their tier price at once.
+  const soldByTile = useMemo(() => {
+    const m: Record<number, 'buy' | 'book'> = {};
+    const recent = feed.slice(0, 4);
+    for (let i = recent.length - 1; i >= 0; i--) m[recent[i].leadNo % TILE_COUNT] = recent[i].outcome;
+    return m;
+  }, [feed]);
 
   return (
     <main style={{ position: 'fixed', inset: 0, background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -110,8 +119,8 @@ export default function LadderAd() {
         {/* Tiles (all live funnels, Hive chrome) */}
         {tiles.map((t) => {
           const lead = leads[t.leadId];
-          const resolved = outcomes[lead.id];
-          const isBuy = resolved?.outcome === 'buy';
+          const outcome = soldByTile[t.leadId];
+          const isBuy = outcome === 'buy';
           return (
             <article key={t.leadId} style={{
                 position: 'absolute', left: t.left, top: t.top, width: t.tier.w, height: t.tier.h,
@@ -124,7 +133,7 @@ export default function LadderAd() {
                 <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: isBuy ? '#fff' : '#cbd5e1' }}>
                   {t.tier.label} <span style={{ color: isBuy ? '#fff' : '#4ade80' }}>${t.tier.price.toLocaleString()}</span>
                 </span>
-                <StatusPill resolved={resolved} />
+                <StatusPill outcome={outcome} price={t.tier.price} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 26, background: '#fff' }}>
                 <iframe title={`ladder-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
@@ -178,9 +187,9 @@ export default function LadderAd() {
   );
 }
 
-function StatusPill({ resolved }: { resolved?: Outcome }) {
-  if (resolved?.outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD {saleLabel(resolved.valueUsd)}</span>;
-  if (resolved?.outcome === 'book') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>BOOKED</span>;
+function StatusPill({ outcome, price }: { outcome?: 'buy' | 'book'; price: number }) {
+  if (outcome === 'buy') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>SOLD ${price.toLocaleString()}</span>;
+  if (outcome === 'book') return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>BOOKED</span>;
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
       <span style={{ width: 6, height: 6, borderRadius: 3, background: '#94a3b8' }} className="pulse-glow" /> Selling…
