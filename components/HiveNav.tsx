@@ -20,6 +20,7 @@ const VARIANTS = [
   { slug: 'switchboard', key: '6', name: 'Switchboard · 9:16' },
   { slug: 'ladder', key: '7', name: 'The Value Ladder' },
   { slug: 'ladder-d4a', key: '8', name: 'Value Ladder · d4a' },
+  { slug: 'scenarios', key: '9', name: 'Pick Your Path' },
 ];
 
 export default function HiveNav() {
@@ -32,6 +33,9 @@ export default function HiveNav() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 'm') { setPinned((v) => !v); setHovering(false); return; }
+      // The /hive/scenarios page owns the number keys (1/2 pick a path, 0 returns),
+      // so don't hijack them there — number-jump stays global on every other stage.
+      if (pathname.includes('/hive/scenarios')) return;
       const n = Number(e.key);
       if (Number.isInteger(n) && n >= 1 && n <= VARIANTS.length) {
         window.location.href = `${BASE_PATH}/hive/${VARIANTS[n - 1].slug}/`;
@@ -39,7 +43,7 @@ export default function HiveNav() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (pinned) return;
@@ -123,7 +127,7 @@ export default function HiveNav() {
         ← All hive stages
       </a>
       <div style={{ padding: '2px 10px 4px', fontSize: 11, color: '#475569', fontFamily: 'ui-monospace, Menlo, monospace' }}>
-        1–8 jump · M pin · edge-hover to reveal
+        1–9 jump · M pin · edge-hover to reveal
       </div>
     </nav>
   );

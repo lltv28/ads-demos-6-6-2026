@@ -15,6 +15,7 @@ const VARIANTS = [
   { slug: 'switchboard', name: '6 · Switchboard', aspect: '9:16 · record at 1080×1920', hook: 'Leads rain into the orb; the conversations it\'s holding scroll below.' },
   { slug: 'ladder', name: '7 · The Value Ladder', aspect: '16:9 · record at 1920×1080', hook: 'Sideways pyramid: a wide base of low-ticket funnels narrows up to a few high-ticket closes — one AI runs the whole ladder.' },
   { slug: 'ladder-d4a', name: '8 · Value Ladder · d4a', aspect: '16:9 · record at 1920×1080', hook: 'The Value Ladder in the d4a design system — warm white, Instrument Serif, emerald. The light/brand reinterpretation.' },
+  { slug: 'scenarios', name: '9 · Pick Your Path', aspect: '16:9 · record at 1920×1080', hook: 'Two selectable scenarios: "Products & Memberships" (low→mid) or "AI→High-Ticket" (chats→booked calls→$15k closes). A chooser flies into the matching live floor. Keys 1/2 pick, 0 back.' },
 ];
 
 export default function HiveIndex() {
@@ -27,7 +28,7 @@ export default function HiveIndex() {
     <main style={{ minHeight: '100vh', background: '#0b1220', color: '#e2e8f0', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '48px 24px', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#34D399' }}>Lucas AI · Hive Stages</div>
-        <h1 style={{ fontSize: 30, fontWeight: 700, margin: '8px 0 4px' }}>Six spins on the winning Hive ad</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 700, margin: '8px 0 4px' }}>Spins on the winning Hive ad</h1>
         <p style={{ color: '#94a3b8', margin: '0 0 28px' }}>
           One brain, many AI salespeople — each stage frames it differently. Record at the viewport listed on each card.
         </p>
