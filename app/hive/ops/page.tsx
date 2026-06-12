@@ -34,12 +34,12 @@ const SALE_MIN_MS = 5000;
 const LOAD_MS = 2600;
 
 /* canvas geometry (stage-absolute) */
-const ORB_CX = 250, ORB_CY = 684, ORB_SIZE = 300, SRC_R = 150;
+const ORB_CX = 268, ORB_CY = 596, ORB_SIZE = 420, SRC_R = 165;
 
 type TierCfg = { key: string; recurring: boolean; tilePrices: number[]; n: number; cx: number; w: number; h: number; gap: number; demoScale: number; orbColor: string; tagLabel: string };
 const TIERS: TierCfg[] = [
-  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 158, gap: 14, demoScale: 0.5, orbColor: '#16A46C', tagLabel: 'Low-ticket' },
-  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 184, gap: 16, demoScale: 0.5, orbColor: '#106844', tagLabel: 'Membership' },
+  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 120, gap: 12, demoScale: 0.5, orbColor: '#16A46C', tagLabel: 'Low-ticket' },
+  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 140, gap: 12, demoScale: 0.5, orbColor: '#106844', tagLabel: 'Membership' },
 ];
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0);
 const BASE_REVENUE = 10737;
@@ -62,14 +62,23 @@ function buildTiles(): Tile[] {
   return tiles;
 }
 
-function connPath(t: Tile): string {
-  const ang = Math.atan2(t.cy - ORB_CY, t.cx - ORB_CX);
+function linkPath(cx: number, cy: number, left: number): string {
+  const ang = Math.atan2(cy - ORB_CY, cx - ORB_CX);
   const sx = ORB_CX + Math.cos(ang) * SRC_R;
   const sy = ORB_CY + Math.sin(ang) * SRC_R;
-  const ex = t.left - 6, ey = t.cy;
+  const ex = left - 6, ey = cy;
   const pull = Math.abs(ex - sx) * 0.5;
   return `M ${sx} ${sy} C ${sx + pull} ${sy} ${ex - pull} ${ey} ${ex} ${ey}`;
 }
+function connPath(t: Tile): string { return linkPath(t.cx, t.cy, t.left); }
+
+const FLOOR_W = 204, FLOOR_H = 116;
+const FLOOR = [
+  { name: 'SMS Rep', channel: 'SMS', work: '“Still in? →” · 14 queued', cx: 660, cy: 946 },
+  { name: 'Emailer', channel: 'Email', work: 'Re-engage seq · 41 sending', cx: 884, cy: 946 },
+  { name: 'Nurturer', channel: 'Chat', work: 'Pricing objection · resolved', cx: 1108, cy: 946 },
+  { name: 'Onboarder', channel: 'Onboarding', work: 'Plan delivered · ×6', cx: 1332, cy: 946 },
+];
 
 const AGENT_COLOR: Record<string, string> = {
   Closer: '#106844', 'SMS Rep': '#16A46C', Emailer: '#5BC998', Nurturer: '#2F8F66', Onboarder: '#7C7468',
@@ -104,6 +113,7 @@ export default function OpsCenterAd() {
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
   const conns = useMemo(() => tiles.map(connPath), [tiles]);
+  const floorConns = useMemo(() => FLOOR.map((f) => linkPath(f.cx, f.cy, f.cx - FLOOR_W / 2)), []);
   const { feed } = useLiveTally({ baseRevenue: BASE_REVENUE, basePurchases: 118, baseCalls: 0, minMs: 1800, maxMs: 3000 });
 
   const top = feed[0];
@@ -193,13 +203,16 @@ export default function OpsCenterAd() {
           backgroundImage: `radial-gradient(rgba(46,43,38,0.10) 1.2px, transparent 1.2px)`, backgroundSize: '22px 22px', backgroundPosition: '14px 14px',
         }} />
         <div style={{ position: 'absolute', top: 340, left: 52, fontSize: 13, fontWeight: 700, color: SUB, zIndex: 25, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Sales floor · {TILE_COUNT} live conversations
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Sales floor · {TILE_COUNT} conversations · {FLOOR.length} agents
         </div>
 
         {/* ── Connector lines (faint static; active one pulses green on a sale) ── */}
         <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 21 }}>
           {conns.map((d, i) => (
             <path key={i} d={d} fill="none" stroke={LINE} strokeWidth={1.5} strokeLinecap="round" />
+          ))}
+          {floorConns.map((d, i) => (
+            <path key={`f${i}`} d={d} fill="none" stroke={LINE} strokeWidth={1.5} strokeLinecap="round" />
           ))}
           {top && (
             <path key={top.key} d={conns[pulseIdx]} fill="none" stroke={ACCENT} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="34 1030" className="ops-exec" />
@@ -234,10 +247,13 @@ export default function OpsCenterAd() {
           );
         })}
 
+        {/* ── Other agents on the floor (bottom row) ── */}
+        {FLOOR.map((f) => <FloorCard key={f.name} f={f} />)}
+
         {/* ── AI Engine source node (orb + revenue) ── */}
         <div style={{ position: 'absolute', left: ORB_CX - ORB_SIZE / 2, top: ORB_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 24 }}>
-          <div style={{ position: 'absolute', inset: 24, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(22,164,108,0.10), rgba(22,164,108,0))' }} />
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={520} aiColor={ACCENT} idleColor={ACCENT} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.5} style={{ position: 'absolute', inset: 0 }} />
+          <div style={{ position: 'absolute', inset: 44, borderRadius: '50%', background: 'radial-gradient(circle at 42% 34%, #34302A 0%, #221F1A 70%, #1A1714 100%)', boxShadow: '0 16px 40px -14px rgba(46,43,38,0.5), inset 0 1px 0 rgba(255,255,255,0.06)' }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={600} aiColor={ACCENT} idleColor={ACCENT} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.46} style={{ position: 'absolute', inset: 0 }} />
         </div>
         <div style={{ position: 'absolute', left: ORB_CX - 130, top: ORB_CY + ORB_SIZE / 2 - 6, width: 260, textAlign: 'center', zIndex: 24 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: INK, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 999, padding: '5px 13px', boxShadow: SHADOW }}>
@@ -303,6 +319,21 @@ function AgentCard({ a }: { a: typeof AGENTS[number] }) {
           <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT_INK }}>▴ {a.count} today</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FloorCard({ f }: { f: typeof FLOOR[number] }) {
+  const initials = f.name.split(' ').map((w) => w[0]).join('').slice(0, 2);
+  return (
+    <div style={{ position: 'absolute', left: f.cx - FLOOR_W / 2, top: f.cy - FLOOR_H / 2, width: FLOOR_W, height: FLOOR_H, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, boxShadow: SHADOW, padding: '12px 13px', zIndex: 23, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 999, background: AGENT_COLOR[f.name] ?? SUB, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{initials}</span>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{f.name}</span>
+        <span style={{ width: 6, height: 6, borderRadius: 999, background: ACCENT }} className="pulse-glow" />
+      </div>
+      <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, color: SUB, background: BG, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '2px 7px' }}>{f.channel}</span>
+      <span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.work}</span>
     </div>
   );
 }

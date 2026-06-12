@@ -53,6 +53,8 @@ export interface VoiceOrbClusterProps {
   avatarSrc?: string;
   /** Avatar diameter as a fraction of canvas size. Default 0.46. */
   avatarScale?: number;
+  /** Keep the particle ramp in a mid/dark range so it stays visible on a light bg. */
+  light?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -99,9 +101,20 @@ function hslToRgb(h: number, s: number, l: number): RGB {
   const p = 2 * l - q;
   return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
 }
-function buildRamp(hex: string): Ramp {
+function buildRamp(hex: string, light = false): Ramp {
   const rgb = hexToRgb(hex);
   const [h, s] = rgbToHsl(rgb);
+  // On a light background the near-white top of the ramp vanishes, so the cluster
+  // looks like it only sits below the avatar. In light mode keep the whole ramp in a
+  // visible mid/dark range so particles ring the avatar evenly.
+  if (light) {
+    return {
+      deep: hslToRgb(h, Math.min(s, 1), 0.24),
+      brand: rgb,
+      mint: hslToRgb(h, Math.min(s * 0.9, 1), 0.44),
+      hi: hslToRgb(h, Math.min(s * 0.85, 1), 0.32),
+    };
+  }
   return {
     deep: hslToRgb(h, Math.min(s, 1), 0.17),
     brand: rgb,
@@ -147,6 +160,7 @@ export default function VoiceOrbCluster({
   morphSpeed = 0.08,
   avatarSrc,
   avatarScale = 0.46,
+  light = false,
   className,
   style,
 }: VoiceOrbClusterProps) {
@@ -160,9 +174,9 @@ export default function VoiceOrbCluster({
   const avatarOnRef    = useRef(!!avatarSrc);
   const avatarScaleRef = useRef(avatarScale);
 
-  const userRamp = useRef(buildRamp(userColor));
-  const aiRamp   = useRef(buildRamp(aiColor));
-  const idleRamp = useRef(buildRamp(idleColor ?? aiColor));
+  const userRamp = useRef(buildRamp(userColor, light));
+  const aiRamp   = useRef(buildRamp(aiColor, light));
+  const idleRamp = useRef(buildRamp(idleColor ?? aiColor, light));
 
   useEffect(() => {
     speakerRef.current = speaker;
@@ -172,9 +186,9 @@ export default function VoiceOrbCluster({
     morphRef.current   = morphSpeed;
     avatarOnRef.current    = !!avatarSrc;
     avatarScaleRef.current = avatarScale;
-    userRamp.current   = buildRamp(userColor);
-    aiRamp.current     = buildRamp(aiColor);
-    idleRamp.current   = buildRamp(idleColor ?? aiColor);
+    userRamp.current   = buildRamp(userColor, light);
+    aiRamp.current     = buildRamp(aiColor, light);
+    idleRamp.current   = buildRamp(idleColor ?? aiColor, light);
   });
 
   /* ---- audio ---- */
