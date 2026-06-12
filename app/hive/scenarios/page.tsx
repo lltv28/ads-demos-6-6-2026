@@ -25,23 +25,23 @@ const LOAD_MS = 2600;     // how long the loading ring holds per sale
 
 type TierCfg = {
   key: string;
-  tag: string;
+  recurring: boolean;    // mid tiers render their price as "$X/mo"
+  tilePrices: number[];  // per-tile price (length === n), so tiles vary
   n: number; cx: number; w: number; h: number; gap: number; demoScale: number;
   orbColor: string;
   soldText: string; idleText: string;
   footLabel: string; statNote: string;
-  price: number;
 };
 
 const TIERS: TierCfg[] = [
-  { key: 'low', tag: '$17', n: 4, cx: 800, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…', footLabel: '$17', statNote: '110 sold today', price: 17 },
-  { key: 'mid', tag: '$497/mo', n: 3, cx: 1400, w: 380, h: 264, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…', footLabel: '$497/mo', statNote: '8 new members today', price: 497 },
+  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 800, w: 300, h: 200, gap: 18, demoScale: 0.6, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…', footLabel: '$7–$97', statNote: '110 sold today' },
+  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1400, w: 380, h: 264, gap: 22, demoScale: 0.6, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…', footLabel: '$197–$1,497/mo', statNote: '8 new members today' },
 ];
 
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0); // 7
-const BASE_REVENUE = 5846; // 110×$17 + 8×$497
+const BASE_REVENUE = 10737; // ≈ 110 low buyers (avg ~$45) + 8 members (avg ~$730/mo)
 
-type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number };
+type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number; price: number; tag: string };
 
 function buildTiles(): Tile[] {
   const tiles: Tile[] = [];
@@ -51,7 +51,9 @@ function buildTiles(): Tile[] {
     const top0 = CORE_CY - totalH / 2;
     for (let i = 0; i < tier.n; i++) {
       const top = top0 + i * (tier.h + tier.gap);
-      tiles.push({ leadId, tier, idx: i, left: tier.cx - tier.w / 2, top, cx: tier.cx, cy: top + tier.h / 2 });
+      const price = tier.tilePrices[i];
+      const tag = tier.recurring ? `$${price.toLocaleString()}/mo` : `$${price}`;
+      tiles.push({ leadId, tier, idx: i, left: tier.cx - tier.w / 2, top, cx: tier.cx, cy: top + tier.h / 2, price, tag });
       leadId += 1;
     }
   }
@@ -97,7 +99,7 @@ export default function MembershipAd() {
     const ev = feed[0];
     if (!ev || lastRevKey.current === ev.key) return;
     lastRevKey.current = ev.key;
-    const price = tiles[ev.leadNo % TILE_COUNT].tier.price;
+    const price = tiles[ev.leadNo % TILE_COUNT].price;
     if (price > 0) setTimeout(() => setRevenue((r) => r + price), 0);
   }, [feed, tiles]);
   const revDisplay = useCountUp(revenue);
@@ -165,7 +167,7 @@ export default function MembershipAd() {
                 transition: 'border 0.3s ease, box-shadow 0.3s ease',
               }}>
               <header style={{ height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
-                <span style={{ fontSize: 25, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tier.tag}</span>
+                <span style={{ fontSize: 25, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tag}</span>
                 <StatusPill tier={t.tier} hit={hit} />
               </header>
               <div style={{ width: '100%', height: t.tier.h - 46, background: '#fff' }}>
