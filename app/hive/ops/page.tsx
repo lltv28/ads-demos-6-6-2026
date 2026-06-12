@@ -83,15 +83,15 @@ const FLOOR = [
 const AGENT_COLOR: Record<string, string> = {
   Closer: '#106844', 'SMS Rep': '#16A46C', Emailer: '#5BC998', Nurturer: '#2F8F66', Onboarder: '#7C7468',
 };
-const ACTIVITY: { t: string; agent: string; text: string; won?: boolean }[] = [
-  { t: '2:14 AM', agent: 'Closer', text: 'Ascended Marcus from $17 to $247/mo', won: true },
-  { t: '1:09 AM', agent: 'Emailer', text: 'Recovered a buyer who went cold 41 days ago' },
-  { t: '12:51 AM', agent: 'SMS Rep', text: 'Booked a call for Tuesday 3:00 PM' },
-  { t: '12:18 AM', agent: 'Nurturer', text: 'Answered a pricing objection in your voice' },
-  { t: '11:52 PM', agent: 'Onboarder', text: 'Delivered plans to 6 new buyers' },
-  { t: '11:20 PM', agent: 'Closer', text: 'Ascended a $7 buyer to the $497/mo plan', won: true },
-  { t: '10:46 PM', agent: 'SMS Rep', text: 'Re-engaged 14 stalled buyers' },
-  { t: '10:09 PM', agent: 'Nurturer', text: 'Handled 9 questions overnight' },
+const ACTIVITY: { t: string; agent: string; amount: string; product: string }[] = [
+  { t: '2:14 AM', agent: 'Closer', amount: '$497/mo', product: 'Inner Circle membership' },
+  { t: '1:46 AM', agent: 'SMS Rep', amount: '$27', product: 'Quick-Start Playbook' },
+  { t: '1:09 AM', agent: 'Emailer', amount: '$197/mo', product: 'Pro membership' },
+  { t: '12:51 AM', agent: 'Closer', amount: '$1,497/mo', product: 'Mastermind' },
+  { t: '12:18 AM', agent: 'Nurturer', amount: '$97', product: 'Growth Toolkit' },
+  { t: '11:52 PM', agent: 'SMS Rep', amount: '$67', product: 'Mini-Course' },
+  { t: '11:20 PM', agent: 'Onboarder', amount: '$197/mo', product: 'Pro membership' },
+  { t: '10:46 PM', agent: 'Emailer', amount: '$7', product: 'Starter Kit' },
 ];
 const SPARKS = {
   convos: [280, 288, 291, 300, 296, 305, 312, 318, 314, 322, 326, 329],
@@ -264,13 +264,16 @@ export default function OpsCenterAd() {
                 <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10 }}>
                   <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 999, background: AGENT_COLOR[a.agent] ?? SUB, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{initials}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: INK, lineHeight: 1.35 }}>{a.text}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.35 }}>
+                      <span style={{ fontWeight: 800, color: ACCENT_INK }}>SALE:</span>{' '}
+                      <span style={{ fontWeight: 800, color: INK }}>{a.amount}</span>{' '}
+                      <span style={{ fontWeight: 600, color: SUB }}>· {a.product}</span>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <span style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{a.agent}</span>
+                      <span style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>Sold by {a.agent}</span>
                       <span style={{ width: 3, height: 3, borderRadius: 999, background: FAINT }} />
                       <span style={{ fontSize: 12, color: FAINT, fontVariantNumeric: 'tabular-nums' }}>{a.t}</span>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUB, border: `1px solid ${BORDER}`, borderRadius: 5, padding: '1px 5px' }}>AI</span>
-                      {a.won && <span style={{ fontSize: 10, fontWeight: 800, color: ACCENT_INK, background: ACCENT_SOFT, borderRadius: 5, padding: '1px 6px' }}>Won</span>}
                     </div>
                   </div>
                 </div>
