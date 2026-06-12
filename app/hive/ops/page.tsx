@@ -34,12 +34,12 @@ const SALE_MIN_MS = 5000;
 const LOAD_MS = 2600;
 
 /* canvas geometry (stage-absolute) */
-const ORB_CX = 268, ORB_CY = 596, ORB_SIZE = 420, SRC_R = 165;
+const ORB_CX = 268, ORB_CY = 582, ORB_SIZE = 380, SRC_R = 160;
 
 type TierCfg = { key: string; recurring: boolean; tilePrices: number[]; n: number; cx: number; w: number; h: number; gap: number; demoScale: number; orbColor: string; tagLabel: string };
 const TIERS: TierCfg[] = [
-  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 120, gap: 12, demoScale: 0.5, orbColor: '#16A46C', tagLabel: 'Low-ticket' },
-  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 140, gap: 12, demoScale: 0.5, orbColor: '#106844', tagLabel: 'Membership' },
+  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 140, gap: 14, demoScale: 0.5, orbColor: '#16A46C', tagLabel: 'Low-ticket' },
+  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 162, gap: 16, demoScale: 0.5, orbColor: '#106844', tagLabel: 'Membership' },
 ];
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0);
 const BASE_REVENUE = 10737;
@@ -74,22 +74,15 @@ function connPath(t: Tile): string { return linkPath(t.cx, t.cy, t.left); }
 
 const FLOOR_W = 204, FLOOR_H = 116;
 const FLOOR = [
-  { name: 'SMS Rep', channel: 'SMS', work: '“Still in? →” · 14 queued', cx: 660, cy: 946 },
-  { name: 'Emailer', channel: 'Email', work: 'Re-engage seq · 41 sending', cx: 884, cy: 946 },
-  { name: 'Nurturer', channel: 'Chat', work: 'Pricing objection · resolved', cx: 1108, cy: 946 },
-  { name: 'Onboarder', channel: 'Onboarding', work: 'Plan delivered · ×6', cx: 1332, cy: 946 },
+  { name: 'SMS Rep', channel: 'SMS', work: '“Still in? →” · 14 queued', cx: 660, cy: 972 },
+  { name: 'Emailer', channel: 'Email', work: 'Re-engage seq · 41 sending', cx: 884, cy: 972 },
+  { name: 'Nurturer', channel: 'Chat', work: 'Pricing objection · resolved', cx: 1108, cy: 972 },
+  { name: 'Onboarder', channel: 'Onboarding', work: 'Plan delivered · ×6', cx: 1332, cy: 972 },
 ];
 
 const AGENT_COLOR: Record<string, string> = {
   Closer: '#106844', 'SMS Rep': '#16A46C', Emailer: '#5BC998', Nurturer: '#2F8F66', Onboarder: '#7C7468',
 };
-const AGENTS = [
-  { name: 'Closer', desc: 'On a call · Sarah K.', channel: 'Voice', count: '3 closed' },
-  { name: 'SMS Rep', desc: '14 in queue · booking Tue 3pm', channel: 'SMS', count: '27 sent' },
-  { name: 'Emailer', desc: 'Sending re-engagement sequence', channel: 'Email', count: '41 sent' },
-  { name: 'Nurturer', desc: 'Answering a pricing objection', channel: 'Chat', count: '9 handled' },
-  { name: 'Onboarder', desc: 'Delivering personalized plans', channel: 'Onboarding', count: '6 onboarded' },
-];
 const ACTIVITY: { t: string; agent: string; text: string; won?: boolean }[] = [
   { t: '2:14 AM', agent: 'Closer', text: 'Ascended Marcus from $17 to $247/mo', won: true },
   { t: '1:09 AM', agent: 'Emailer', text: 'Recovered a buyer who went cold 41 days ago' },
@@ -188,21 +181,13 @@ export default function OpsCenterAd() {
           <MetricCard label="Recovered from cold leads" value="$3,180" delta="14%" data={SPARKS.recovered} />
         </div>
 
-        {/* ── AI Agents roster — the parallel team ── */}
-        <div style={{ position: 'absolute', top: 188, left: 32, fontSize: 12, fontWeight: 700, letterSpacing: 0.3, color: SUB, zIndex: 30, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: ACCENT }} className="pulse-glow" /> AI agents · 5 working in parallel
-        </div>
-        <div style={{ position: 'absolute', top: 208, left: 32, right: 32, display: 'flex', gap: 16, zIndex: 30 }}>
-          {AGENTS.map((a) => <AgentCard key={a.name} a={a} />)}
-        </div>
-
         {/* ── Flow canvas (left + center): dotted backdrop ── */}
         <div style={{
-          position: 'absolute', top: 324, left: 32, width: 1404, bottom: 32, background: CARD,
+          position: 'absolute', top: 212, left: 32, width: 1404, bottom: 32, background: CARD,
           border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, overflow: 'hidden',
           backgroundImage: `radial-gradient(rgba(46,43,38,0.10) 1.2px, transparent 1.2px)`, backgroundSize: '22px 22px', backgroundPosition: '14px 14px',
         }} />
-        <div style={{ position: 'absolute', top: 340, left: 52, fontSize: 13, fontWeight: 700, color: SUB, zIndex: 25, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ position: 'absolute', top: 228, left: 52, fontSize: 13, fontWeight: 700, color: SUB, zIndex: 25, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Sales floor · {TILE_COUNT} conversations · {FLOOR.length} agents
         </div>
 
@@ -252,8 +237,8 @@ export default function OpsCenterAd() {
 
         {/* ── AI Engine source node (orb + revenue) ── */}
         <div style={{ position: 'absolute', left: ORB_CX - ORB_SIZE / 2, top: ORB_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 24 }}>
-          <div style={{ position: 'absolute', inset: 44, borderRadius: '50%', background: 'radial-gradient(circle at 42% 34%, #34302A 0%, #221F1A 70%, #1A1714 100%)', boxShadow: '0 16px 40px -14px rgba(46,43,38,0.5), inset 0 1px 0 rgba(255,255,255,0.06)' }} />
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={600} aiColor={ACCENT} idleColor={ACCENT} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.46} style={{ position: 'absolute', inset: 0 }} />
+          <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(22,164,108,0.13), rgba(22,164,108,0))' }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={480} aiColor={ACCENT} idleColor={ACCENT} light avatarSrc={asset('/profilepicnew.png')} avatarScale={0.52} style={{ position: 'absolute', inset: 0 }} />
         </div>
         <div style={{ position: 'absolute', left: ORB_CX - 130, top: ORB_CY + ORB_SIZE / 2 - 6, width: 260, textAlign: 'center', zIndex: 24 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: INK, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 999, padding: '5px 13px', boxShadow: SHADOW }}>
@@ -267,7 +252,7 @@ export default function OpsCenterAd() {
         </div>
 
         {/* ── Activity timeline (right) ── */}
-        <section style={{ position: 'absolute', top: 324, left: 1456, width: 432, bottom: 32, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 30 }}>
+        <section style={{ position: 'absolute', top: 212, left: 1456, width: 432, bottom: 32, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 30 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: `1px solid ${BORDER}` }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>Activity</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: SUB }}><span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Live</span>
@@ -300,26 +285,6 @@ export default function OpsCenterAd() {
         `}</style>
       </div>
     </main>
-  );
-}
-
-function AgentCard({ a }: { a: typeof AGENTS[number] }) {
-  const initials = a.name.split(' ').map((w) => w[0]).join('').slice(0, 2);
-  return (
-    <div style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, boxShadow: SHADOW, padding: '13px 15px', display: 'flex', gap: 11 }}>
-      <span style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 999, background: AGENT_COLOR[a.name] ?? SUB, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{initials}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{a.name}</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: SUB }}><span style={{ width: 6, height: 6, borderRadius: 999, background: ACCENT }} className="pulse-glow" /> live</span>
-        </div>
-        <div style={{ fontSize: 12, color: SUB, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.desc}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 7 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: SUB, background: BG, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '2px 7px' }}>{a.channel}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT_INK }}>▴ {a.count} today</span>
-        </div>
-      </div>
-    </div>
   );
 }
 
