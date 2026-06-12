@@ -1,103 +1,83 @@
 'use client';
 
-// HIVE VARIANT · "Ops Center" — the membership engine wrapped in a mission-control
-// frame: top status bar (all-systems-live + founder-away + middle-of-the-night clock),
-// a right rail of grounded outcome counters ending in the "You: 0 hours" punchline, and
-// a bottom activity ticker of outcome lines at odd hours (screams "while you slept").
-// The brain core + live funnel tiles + OG Hive flow are kept as the proof it's real.
+// HIVE VARIANT · "Ops Center" (productized) — the AI sales team as a REAL SaaS dashboard,
+// not a promo render. Light Stripe/Notion design system: app shell (top bar), a stats row
+// of metric cards with sparklines + trend deltas, the brain kept in a calm "AI Engine"
+// card, live-conversation tiles, and a proper activity timeline. No glow, no energy beams.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  STAGE_W, STAGE_H, C,
+  STAGE_W, STAGE_H,
   createLeads, buildFunnelSrc,
   useFitStage, useRecordingChrome, useLiveTally, useCountUp,
 } from '@/lib/adStage';
 import VoiceOrbCluster, { type Speaker } from '@/components/VoiceOrbCluster';
 import { asset } from '@/lib/basePath';
 
-const BG = '#0f172a';
-const STATUS_H = 72;
-const CORE_CX = 250, CORE_CY = (STAGE_H + STATUS_H) / 2, CORE_R = 150;
-const ORB_SIZE = 560;
-const AVATAR_SCALE = 0.46;
-const AVATAR_R = (ORB_SIZE * AVATAR_SCALE) / 2;
-const IDLE_COLOR = '#16A46C';
+/* design tokens — light, restrained */
+const BG = '#F5F6F8';
+const CARD = '#FFFFFF';
+const BORDER = '#E6E8EC';
+const INK = '#1B2330';
+const SUB = '#677184';
+const FAINT = '#98A1B0';
+const ACCENT = '#16A46C';
+const POS = '#15A36B';
+const SHADOW = '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.07)';
+
 const SALE_MIN_MS = 5000;
 const LOAD_MS = 2600;
-const RAIL_X = 1530;
 
-type TierCfg = {
-  key: string;
-  recurring: boolean;
-  tilePrices: number[];
-  n: number; cx: number; w: number; h: number; gap: number; demoScale: number;
-  orbColor: string;
-  soldText: string; idleText: string;
-};
-
+type TierCfg = { key: string; recurring: boolean; tilePrices: number[]; n: number; demoScale: number; orbColor: string; tagLabel: string };
 const TIERS: TierCfg[] = [
-  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 760, w: 290, h: 178, gap: 16, demoScale: 0.55, orbColor: '#38bdf8', soldText: 'SOLD', idleText: 'Selling…' },
-  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1290, w: 350, h: 238, gap: 20, demoScale: 0.58, orbColor: '#f59e0b', soldText: 'JOINED', idleText: 'Welcoming…' },
+  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, demoScale: 0.5, orbColor: '#2563EB', tagLabel: 'Low-ticket' },
+  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, demoScale: 0.5, orbColor: '#D97706', tagLabel: 'Membership' },
 ];
-
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0);
 const BASE_REVENUE = 10737;
 
-// Outcome-focused activity log at odd hours — the "while you slept" hero, as a ticker.
-const ACTIVITY: { t: string; s: string; mark?: string }[] = [
-  { t: '2:14 AM', s: 'Closer took Marcus from $17 → $247/mo', mark: '✅' },
-  { t: '1:09 AM', s: 'Emailer recovered a buyer who went cold 41 days ago' },
-  { t: '12:51 AM', s: 'SMS Rep booked a call for Tuesday 3pm' },
-  { t: '3:47 AM', s: 'Nurturer answered a pricing objection — no human needed' },
-  { t: '11:52 PM', s: 'Onboarder delivered personalized plans to 6 new buyers' },
-  { t: '2:38 AM', s: 'Closer ascended a $7 buyer to the $497/mo plan', mark: '✅' },
-  { t: '4:05 AM', s: 'SMS Rep re-engaged 14 stalled buyers' },
-  { t: '12:18 AM', s: 'Nurturer handled 9 questions in your voice', mark: '🎙' },
-];
-
-type Tile = { leadId: number; tier: TierCfg; idx: number; left: number; top: number; cx: number; cy: number; price: number; tag: string };
-
+type Tile = { leadId: number; tier: TierCfg; price: number; tag: string };
 function buildTiles(): Tile[] {
   const tiles: Tile[] = [];
   let leadId = 0;
   for (const tier of TIERS) {
-    const totalH = tier.n * tier.h + (tier.n - 1) * tier.gap;
-    const top0 = CORE_CY - totalH / 2;
     for (let i = 0; i < tier.n; i++) {
-      const top = top0 + i * (tier.h + tier.gap);
       const price = tier.tilePrices[i];
       const tag = tier.recurring ? `$${price.toLocaleString()}/mo` : `$${price}`;
-      tiles.push({ leadId, tier, idx: i, left: tier.cx - tier.w / 2, top, cx: tier.cx, cy: top + tier.h / 2, price, tag });
+      tiles.push({ leadId, tier, price, tag });
       leadId += 1;
     }
   }
   return tiles;
 }
 
-function threadPath(t: Tile): string {
-  const ang = Math.atan2(t.cy - CORE_CY, t.left - CORE_CX);
-  const sx = CORE_CX + Math.cos(ang) * (CORE_R + 8);
-  const sy = CORE_CY + Math.sin(ang) * (CORE_R + 8);
-  const ex = t.left - 8;
-  const ey = t.cy;
-  const pull = Math.abs(ex - sx) * 0.55;
-  const c1x = sx + Math.cos(ang) * pull;
-  const c1y = sy + Math.sin(ang) * pull * 0.25;
-  const c2x = ex - pull;
-  const c2y = ey;
-  return `M ${sx} ${sy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`;
-}
+const AGENT_COLOR: Record<string, string> = {
+  Closer: '#2563EB', 'SMS Rep': '#7C3AED', Emailer: '#0E9AAE', Nurturer: '#DB2777', Onboarder: '#D97706',
+};
+const ACTIVITY: { t: string; agent: string; text: string; won?: boolean }[] = [
+  { t: '2:14 AM', agent: 'Closer', text: 'Ascended Marcus from $17 to $247/mo', won: true },
+  { t: '1:09 AM', agent: 'Emailer', text: 'Recovered a buyer who went cold 41 days ago' },
+  { t: '12:51 AM', agent: 'SMS Rep', text: 'Booked a call for Tuesday 3:00 PM' },
+  { t: '12:18 AM', agent: 'Nurturer', text: 'Answered a pricing objection in your voice' },
+  { t: '11:52 PM', agent: 'Onboarder', text: 'Delivered plans to 6 new buyers' },
+  { t: '11:20 PM', agent: 'Closer', text: 'Ascended a $7 buyer to the $497/mo plan', won: true },
+  { t: '10:46 PM', agent: 'SMS Rep', text: 'Re-engaged 14 stalled buyers' },
+  { t: '10:09 PM', agent: 'Nurturer', text: 'Handled 9 questions overnight' },
+];
+
+const SPARKS = {
+  convos: [280, 288, 291, 300, 296, 305, 312, 318, 314, 322, 326, 329],
+  calls: [4, 5, 5, 6, 7, 6, 8, 8, 7, 9, 9, 9],
+  ascend: [30, 33, 34, 38, 40, 41, 44, 45, 46, 47, 47, 47],
+  recovered: [2100, 2300, 2480, 2600, 2760, 2880, 2960, 3050, 3110, 3180, 3180, 3180],
+};
 
 export default function OpsCenterAd() {
   const fit = useFitStage();
   useRecordingChrome(BG);
   const leads = useMemo(() => createLeads(TILE_COUNT), []);
   const tiles = useMemo(() => buildTiles(), []);
-  const paths = useMemo(() => tiles.map(threadPath), [tiles]);
   const { feed } = useLiveTally({ baseRevenue: BASE_REVENUE, basePurchases: 118, baseCalls: 0, minMs: 1800, maxMs: 3000 });
-
-  const top = feed[0];
-  const pulseIdx = top ? top.leadNo % TILE_COUNT : 0;
 
   const soldByTile = useMemo(() => {
     const m: Record<number, true> = {};
@@ -105,9 +85,8 @@ export default function OpsCenterAd() {
     return m;
   }, [feed]);
 
-  // Each sale books its tile's price and ticks the "conversations handled" counter.
   const [revenue, setRevenue] = useState(BASE_REVENUE);
-  const [convos, setConvos] = useState(312);
+  const [convos, setConvos] = useState(329);
   const lastRevKey = useRef<number | null>(null);
   useEffect(() => {
     const ev = feed[0];
@@ -119,8 +98,7 @@ export default function OpsCenterAd() {
   const revDisplay = useCountUp(revenue);
   const convoDisplay = useCountUp(convos);
 
-  // Brain orb loading ring on each sale (≥5s apart).
-  const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: IDLE_COLOR });
+  const [orb, setOrb] = useState<{ speaker: Speaker; color: string }>({ speaker: 'idle', color: ACCENT });
   const lastOrbKey = useRef<number | null>(null);
   const lastLoadAt = useRef(0);
   const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,7 +109,7 @@ export default function OpsCenterAd() {
     const now = performance.now();
     if (now - lastLoadAt.current < SALE_MIN_MS) return;
     lastLoadAt.current = now;
-    const color = tiles[ev.leadNo % TILE_COUNT].tier.orbColor ?? IDLE_COLOR;
+    const color = tiles[ev.leadNo % TILE_COUNT].tier.orbColor ?? ACCENT;
     setTimeout(() => setOrb({ speaker: 'processing', color }), 0);
     settleRef.current = setTimeout(() => setOrb((s) => ({ speaker: 'idle', color: s.color })), LOAD_MS);
   }, [feed, tiles]);
@@ -142,153 +120,163 @@ export default function OpsCenterAd() {
       <div style={{
           width: STAGE_W, height: STAGE_H, flexShrink: 0,
           transform: `scale(${fit})`, transformOrigin: 'center center',
-          position: 'relative', overflow: 'hidden',
-          background: `radial-gradient(circle at 12% 55%, #1e293b 0%, ${BG} 70%)`,
-          fontFamily: 'inherit',
+          position: 'relative', overflow: 'hidden', background: BG,
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: INK,
         }}
       >
-        {/* ── Top status bar ── */}
-        <header style={{ position: 'absolute', top: 0, left: 0, right: 0, height: STATUS_H, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', background: 'rgba(2,8,16,0.86)', borderBottom: '1px solid #1e2b45', zIndex: 45 }}>
+        {/* ── App top bar ── */}
+        <header style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', background: CARD, borderBottom: `1px solid ${BORDER}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ width: 14, height: 14, borderRadius: 999, background: C.green, boxShadow: '0 0 12px rgba(46,125,82,0.9)' }} className="pulse-glow" />
-            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', color: '#fff' }}>Lucas AI Team</span>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15 }}>L</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: INK }}>Lucas&nbsp;AI</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: SUB, background: BG, border: `1px solid ${BORDER}`, borderRadius: 7, padding: '4px 10px' }}>AI Team workspace</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 800, color: '#4ade80' }}>
-              <span style={{ width: 9, height: 9, borderRadius: 999, background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} className="pulse-glow" />
-              All systems live
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: SUB }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: POS }} className="pulse-glow" /> All systems operational
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', border: '1px solid #2a3a55', borderRadius: 999, padding: '6px 14px' }}>
-              Founder: <span style={{ color: '#f87171' }}>✗ away</span>
+            <span style={{ width: 1, height: 22, background: BORDER }} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: SUB }}>
+              Founder <Toggle on={false} /> <span style={{ color: INK }}>Away</span>
             </span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#cbd5e1', fontVariantNumeric: 'tabular-nums' }}>2:14 AM · Tue</span>
+            <span style={{ width: 1, height: 22, background: BORDER }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: SUB, fontVariantNumeric: 'tabular-nums' }}>2:14 AM</span>
+            <span style={{ width: 30, height: 30, borderRadius: 999, background: '#E8EBF0', color: SUB, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>LT</span>
           </div>
         </header>
 
-        {/* ── Glowing OG-Hive threads + outward flow + inbound sale pulse ── */}
-        <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
-          {paths.map((d, i) => (
-            <g key={i}>
-              <path d={d} stroke="rgba(255,255,255,0.05)" strokeWidth={6} fill="none" />
-              <path d={d} stroke="rgba(46,125,82,0.3)" strokeWidth={2} fill="none" />
-              <path d={d} stroke="rgba(46,125,82,0.8)" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray="15 250" className="ops-flow" style={{ animationDelay: `${i * 0.4}s` }} />
-            </g>
-          ))}
-          {top && (
-            <path key={top.key} d={paths[pulseIdx]} stroke="#4ade80" strokeWidth={12} fill="none" strokeLinecap="round" strokeDasharray="40 2000" className="ops-inbound"
-              style={{ filter: 'drop-shadow(0 0 8px rgba(74,222,128,0.8))' }} />
-          )}
-        </svg>
+        {/* ── Stats row ── */}
+        <div style={{ position: 'absolute', top: 84, left: 32, right: 32, display: 'flex', gap: 20 }}>
+          <MetricCard label="Conversations handled" value={Math.round(convoDisplay).toLocaleString()} delta="12%" data={SPARKS.convos} live />
+          <MetricCard label="Calls booked · this week" value="9" delta="2" data={SPARKS.calls} />
+          <MetricCard label="Buyers ascended · this month" value="47" delta="8%" data={SPARKS.ascend} />
+          <MetricCard label="Recovered from cold leads" value="$3,180" delta="14%" data={SPARKS.recovered} />
+        </div>
 
-        {/* ── Tiles ── */}
-        {tiles.map((t) => {
-          const lead = leads[t.leadId];
-          const hit = !!soldByTile[t.leadId];
-          return (
-            <article key={t.leadId} style={{
-                position: 'absolute', left: t.left, top: t.top, width: t.tier.w, height: t.tier.h,
-                borderRadius: 12, overflow: 'hidden', zIndex: 20,
-                border: hit ? `4px solid ${C.green}` : '2px solid #334155',
-                background: '#0f172a', boxShadow: hit ? '0 0 28px rgba(46,125,82,0.5)' : '0 8px 18px rgba(0,0,0,0.4)',
-                transition: 'border 0.3s ease, box-shadow 0.3s ease',
-              }}>
-              <header style={{ height: 42, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', background: hit ? C.green : '#1e293b', color: '#fff', transition: 'background 0.3s ease' }}>
-                <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: 0.2, color: hit ? '#fff' : '#4ade80', lineHeight: 1 }}>{t.tag}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, color: hit ? 'rgba(255,255,255,0.85)' : '#64748b' }}>🤖</span>
-                  <StatusPill tier={t.tier} hit={hit} />
-                </span>
-              </header>
-              <div style={{ width: '100%', height: t.tier.h - 42, background: '#fff' }}>
-                <iframe title={`ops-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
-                  allow="autoplay" style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none', display: 'block' }} />
-              </div>
-            </article>
-          );
-        })}
-
-        {/* ── Core (left) — avatar brain + revenue ── */}
-        <div style={{ position: 'absolute', left: CORE_CX - ORB_SIZE / 2, top: CORE_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 30 }}>
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.12} spin={0.5} morphSpeed={0.04} size={ORB_SIZE} count={620} aiColor={orb.color} idleColor={IDLE_COLOR} avatarSrc={asset('/profilepicnew.png')} avatarScale={AVATAR_SCALE} style={{ position: 'absolute', inset: 0 }} />
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', left: '50%', top: `calc(50% + ${AVATAR_R + 20}px)`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div style={{ background: 'rgba(4,14,9,0.66)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 16, padding: '9px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 34px rgba(0,0,0,0.5)' }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Revenue Today</div>
-                <div style={{ fontSize: 40, fontWeight: 800, color: '#fff', marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                  ${Math.round(revDisplay).toLocaleString()}
-                </div>
+        {/* ── AI Engine card (left) ── */}
+        <section style={{ position: 'absolute', top: 228, left: 32, width: 452, bottom: 32, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, padding: 24, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>AI Engine</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: POS, background: '#E8F6EF', borderRadius: 999, padding: '4px 10px' }}>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Live
+            </span>
+          </div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={360} count={560} aiColor={'#0E7A4F'} idleColor={'#0E7A4F'} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.5} />
+          </div>
+          <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 18, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: SUB }}>Revenue today</div>
+              <div style={{ fontSize: 38, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${Math.round(revDisplay).toLocaleString()}</div>
+              <div style={{ marginTop: 7, fontSize: 12, fontWeight: 600 }}>
+                <span style={{ color: POS }}>▲ 9%</span> <span style={{ color: FAINT }}>vs yesterday</span>
               </div>
             </div>
+            <div style={{ textAlign: 'right', background: '#E8F6EF', border: '1px solid #BFE8D6', borderRadius: 12, padding: '10px 14px' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#0E7A4F' }}>You worked today</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: INK, lineHeight: 1, marginTop: 3 }}>0 hrs</div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* ── Right rail — grounded outcome counters ── */}
-        <aside style={{ position: 'absolute', left: RAIL_X, top: STATUS_H + 60, width: 350, display: 'flex', flexDirection: 'column', gap: 14, zIndex: 30 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#64748b' }}>Outcomes · automated</div>
-          <Counter label="Conversations handled today" value={Math.round(convoDisplay).toLocaleString()} live />
-          <Counter label="Calls booked this week" value="9" />
-          <Counter label="Buyers ascended this month" value="47" />
-          <Counter label="Revenue recovered · cold leads" value="$3,180" />
-          {/* the punchline */}
-          <div style={{ marginTop: 4, background: 'rgba(22,164,108,0.12)', border: '1px solid rgba(74,222,128,0.4)', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#86efac', letterSpacing: 0.3 }}>You worked today</div>
-            <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>0 hours</div>
+        {/* ── Live conversations (center) ── */}
+        <section style={{ position: 'absolute', top: 228, left: 504, width: 932, bottom: 32, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: INK }}>Live conversations <span style={{ color: FAINT, fontWeight: 600 }}>· {TILE_COUNT} active</span></span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: SUB, border: `1px solid ${BORDER}`, background: CARD, borderRadius: 8, padding: '5px 12px' }}>All agents ▾</span>
           </div>
-        </aside>
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridAutoRows: '1fr', gap: 16 }}>
+            {tiles.map((t) => {
+              const lead = leads[t.leadId];
+              const hit = !!soldByTile[t.leadId];
+              return (
+                <article key={t.leadId} style={{ background: CARD, border: `1px solid ${hit ? '#BFE8D6' : BORDER}`, borderRadius: 13, overflow: 'hidden', boxShadow: SHADOW, display: 'flex', flexDirection: 'column', transition: 'border 0.3s ease' }}>
+                  <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderBottom: `1px solid ${BORDER}` }}>
+                    <span style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: INK, fontVariantNumeric: 'tabular-nums' }}>{t.tag}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: FAINT }}>{t.tier.tagLabel}</span>
+                    </span>
+                    {hit
+                      ? <span style={{ fontSize: 11, fontWeight: 800, color: POS, background: '#E8F6EF', borderRadius: 999, padding: '3px 9px' }}>{t.tier.recurring ? 'Joined' : 'Sold'}</span>
+                      : <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: SUB }}><span style={{ width: 6, height: 6, borderRadius: 999, background: POS }} className="pulse-glow" /> Active</span>}
+                  </header>
+                  <div style={{ flex: 1, background: '#fff', minHeight: 0 }}>
+                    <iframe title={`ops-${t.leadId}`} src={buildFunnelSrc(lead, t.leadId, { count: TILE_COUNT, demoScale: t.tier.demoScale, speed: 0.5 })}
+                      allow="autoplay" style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none', display: 'block' }} />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
 
-        {/* ── Bottom activity ticker (the "while you slept" feed) ── */}
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 54, background: 'rgba(2,8,16,0.92)', borderTop: '1px solid #1e2b45', display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 45 }}>
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px', height: '100%', background: 'rgba(74,222,128,0.1)', borderRight: '1px solid #1e2b45' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: '#4ade80' }} className="pulse-glow" />
-            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', color: '#86efac' }}>Live feed</span>
+        {/* ── Activity timeline (right) ── */}
+        <section style={{ position: 'absolute', top: 228, left: 1456, width: 432, bottom: 32, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: `1px solid ${BORDER}` }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>Activity</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: SUB }}><span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Live</span>
           </div>
-          <div className="ops-ticker" style={{ display: 'flex', whiteSpace: 'nowrap', willChange: 'transform' }}>
-            {[0, 1].map((copy) => (
-              <span key={copy} style={{ display: 'flex', alignItems: 'center' }}>
-                {ACTIVITY.map((a, i) => (
-                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 26px', fontSize: 15 }}>
-                    <span style={{ color: '#4ade80', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{a.t}</span>
-                    <span style={{ color: '#cbd5e1' }}>{a.s}</span>
-                    {a.mark && <span>{a.mark}</span>}
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', border: '1px solid #2a3a55', borderRadius: 999, padding: '2px 8px' }}>🤖 no human</span>
-                    <span style={{ color: '#334155' }}>•</span>
-                  </span>
-                ))}
-              </span>
-            ))}
+          <div style={{ flex: 1, padding: '6px 6px', overflow: 'hidden' }}>
+            {ACTIVITY.map((a, i) => {
+              const initials = a.agent.split(' ').map((w) => w[0]).join('').slice(0, 2);
+              return (
+                <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10 }}>
+                  <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 999, background: AGENT_COLOR[a.agent] ?? SUB, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{initials}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: INK, lineHeight: 1.35 }}>{a.text}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                      <span style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{a.agent}</span>
+                      <span style={{ width: 3, height: 3, borderRadius: 999, background: FAINT }} />
+                      <span style={{ fontSize: 12, color: FAINT, fontVariantNumeric: 'tabular-nums' }}>{a.t}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: SUB, border: `1px solid ${BORDER}`, borderRadius: 5, padding: '1px 5px' }}>AI</span>
+                      {a.won && <span style={{ fontSize: 10, fontWeight: 800, color: POS, background: '#E8F6EF', borderRadius: 5, padding: '1px 6px' }}>Won</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-
-        <style>{`
-          @keyframes ops-flow { to { stroke-dashoffset: -250; } }
-          .ops-flow { animation: ops-flow 2s linear infinite; }
-          @keyframes ops-inbound-k { from { stroke-dashoffset: 2000; opacity: 1; } to { stroke-dashoffset: 0; opacity: 0; } }
-          .ops-inbound { animation: ops-inbound-k 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
-          @keyframes ops-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-          .ops-ticker { animation: ops-ticker 42s linear infinite; }
-        `}</style>
+        </section>
       </div>
     </main>
   );
 }
 
-function Counter({ label, value, live }: { label: string; value: string; live?: boolean }) {
+function Toggle({ on }: { on: boolean }) {
   return (
-    <div style={{ background: '#0f1a2c', border: '1px solid #1e2b45', borderRadius: 14, padding: '13px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>
-        {live && <span style={{ width: 7, height: 7, borderRadius: 999, background: '#4ade80' }} className="pulse-glow" />}
-        {label}
-      </div>
-      <div style={{ fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1, marginTop: 5, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-    </div>
+    <span style={{ display: 'inline-block', position: 'relative', width: 34, height: 20, borderRadius: 999, background: on ? ACCENT : '#CBD2DD' }}>
+      <span style={{ position: 'absolute', top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: 999, background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }} />
+    </span>
   );
 }
 
-function StatusPill({ tier, hit }: { tier: TierCfg; hit: boolean }) {
-  if (hit) return <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>{tier.soldText}</span>;
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const w = 92, h = 34, max = Math.max(...data), min = Math.min(...data), span = max - min || 1;
+  const pts = data.map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - 3 - ((v - min) / span) * (h - 6)).toFixed(1)}`);
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
-      <span style={{ width: 6, height: 6, borderRadius: 3, background: '#94a3b8' }} className="pulse-glow" /> {tier.idleText}
-    </span>
+    <svg width={w} height={h} style={{ display: 'block' }}>
+      <polygon points={`0,${h} ${pts.join(' ')} ${w},${h}`} fill={`${color}1f`} />
+      <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MetricCard({ label, value, delta, data, live }: { label: string; value: string; delta: string; data: number[]; live?: boolean }) {
+  return (
+    <div style={{ flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, boxShadow: SHADOW, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        {live && <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" />}
+        <span style={{ fontSize: 13, fontWeight: 600, color: SUB }}>{label}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: INK, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+          <div style={{ marginTop: 7, fontSize: 12, fontWeight: 600 }}>
+            <span style={{ color: POS }}>▲ {delta}</span> <span style={{ color: FAINT }}>vs last month</span>
+          </div>
+        </div>
+        <Sparkline data={data} color={POS} />
+      </div>
+    </div>
   );
 }
