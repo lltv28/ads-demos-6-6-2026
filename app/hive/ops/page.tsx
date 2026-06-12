@@ -15,17 +15,20 @@ import {
 import VoiceOrbCluster, { type Speaker } from '@/components/VoiceOrbCluster';
 import { asset } from '@/lib/basePath';
 
-/* design tokens — light, restrained */
-const BG = '#F5F6F8';
+/* design tokens — Kodara d4a (warm white, warm ink, emerald + mint) */
+const BG = '#F4F5F6';
 const CARD = '#FFFFFF';
-const BORDER = '#E6E8EC';
-const INK = '#1B2330';
-const SUB = '#677184';
-const FAINT = '#98A1B0';
+const BORDER = 'rgba(46,43,38,0.14)';
+const INK = '#2E2B26';
+const SUB = 'rgba(46,43,38,0.62)';
+const FAINT = 'rgba(46,43,38,0.42)';
 const ACCENT = '#16A46C';
-const POS = '#15A36B';
-const LINE = '#D3D8E0';
-const SHADOW = '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.07)';
+const ACCENT_INK = '#106844';
+const ACCENT_SOFT = 'rgba(22,164,108,0.10)';
+const ACCENT_LINE = 'rgba(22,164,108,0.22)';
+const POS = '#16A46C';
+const LINE = 'rgba(46,43,38,0.20)';
+const SHADOW = '0 1px 2px rgba(46,43,38,0.05), 0 1px 3px rgba(46,43,38,0.08)';
 
 const SALE_MIN_MS = 5000;
 const LOAD_MS = 2600;
@@ -35,8 +38,8 @@ const ORB_CX = 250, ORB_CY = 640, ORB_SIZE = 300, SRC_R = 150;
 
 type TierCfg = { key: string; recurring: boolean; tilePrices: number[]; n: number; cx: number; w: number; h: number; gap: number; demoScale: number; orbColor: string; tagLabel: string };
 const TIERS: TierCfg[] = [
-  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 168, gap: 16, demoScale: 0.5, orbColor: '#2563EB', tagLabel: 'Low-ticket' },
-  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 196, gap: 18, demoScale: 0.5, orbColor: '#D97706', tagLabel: 'Membership' },
+  { key: 'low', recurring: false, tilePrices: [7, 27, 67, 97], n: 4, cx: 700, w: 282, h: 168, gap: 16, demoScale: 0.5, orbColor: '#16A46C', tagLabel: 'Low-ticket' },
+  { key: 'mid', recurring: true, tilePrices: [197, 497, 1497], n: 3, cx: 1120, w: 300, h: 196, gap: 18, demoScale: 0.5, orbColor: '#106844', tagLabel: 'Membership' },
 ];
 const TILE_COUNT = TIERS.reduce((a, t) => a + t.n, 0);
 const BASE_REVENUE = 10737;
@@ -69,7 +72,7 @@ function connPath(t: Tile): string {
 }
 
 const AGENT_COLOR: Record<string, string> = {
-  Closer: '#2563EB', 'SMS Rep': '#7C3AED', Emailer: '#0E9AAE', Nurturer: '#DB2777', Onboarder: '#D97706',
+  Closer: '#106844', 'SMS Rep': '#16A46C', Emailer: '#5BC998', Nurturer: '#2F8F66', Onboarder: '#7C7468',
 };
 const ACTIVITY: { t: string; agent: string; text: string; won?: boolean }[] = [
   { t: '2:14 AM', agent: 'Closer', text: 'Ascended Marcus from $17 to $247/mo', won: true },
@@ -140,7 +143,7 @@ export default function OpsCenterAd() {
           width: STAGE_W, height: STAGE_H, flexShrink: 0,
           transform: `scale(${fit})`, transformOrigin: 'center center',
           position: 'relative', overflow: 'hidden', background: BG,
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: INK,
+          fontFamily: 'inherit', color: INK,
         }}
       >
         {/* ── App top bar ── */}
@@ -156,7 +159,7 @@ export default function OpsCenterAd() {
             </span>
             <span style={{ width: 1, height: 22, background: BORDER }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: SUB, fontVariantNumeric: 'tabular-nums' }}>2:14 AM</span>
-            <span style={{ width: 30, height: 30, borderRadius: 999, background: '#E8EBF0', color: SUB, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>LT</span>
+            <span style={{ width: 30, height: 30, borderRadius: 999, background: 'rgba(46,43,38,0.07)', color: SUB, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>LT</span>
           </div>
         </header>
 
@@ -172,7 +175,7 @@ export default function OpsCenterAd() {
         <div style={{
           position: 'absolute', top: 228, left: 32, width: 1404, bottom: 32, background: CARD,
           border: `1px solid ${BORDER}`, borderRadius: 16, boxShadow: SHADOW, overflow: 'hidden',
-          backgroundImage: `radial-gradient(${'#E4E7EC'} 1.2px, transparent 1.2px)`, backgroundSize: '22px 22px', backgroundPosition: '14px 14px',
+          backgroundImage: `radial-gradient(rgba(46,43,38,0.10) 1.2px, transparent 1.2px)`, backgroundSize: '22px 22px', backgroundPosition: '14px 14px',
         }} />
         <div style={{ position: 'absolute', top: 244, left: 52, fontSize: 13, fontWeight: 700, color: SUB, zIndex: 25, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: 999, background: POS }} className="pulse-glow" /> Sales floor · {TILE_COUNT} live conversations
@@ -195,7 +198,7 @@ export default function OpsCenterAd() {
           return (
             <article key={t.leadId} style={{
                 position: 'absolute', left: t.left, top: t.top, width: t.tier.w, height: t.tier.h, zIndex: 23,
-                background: CARD, border: `1px solid ${hit ? '#BFE8D6' : BORDER}`, borderRadius: 13, overflow: 'hidden',
+                background: CARD, border: `1px solid ${hit ? ACCENT_LINE : BORDER}`, borderRadius: 13, overflow: 'hidden',
                 boxShadow: hit ? '0 0 0 3px rgba(22,164,108,0.12), ' + SHADOW : SHADOW,
                 display: 'flex', flexDirection: 'column', transition: 'border 0.3s ease, box-shadow 0.3s ease',
               }}>
@@ -205,7 +208,7 @@ export default function OpsCenterAd() {
                   <span style={{ fontSize: 10, fontWeight: 600, color: FAINT }}>{t.tier.tagLabel}</span>
                 </span>
                 {hit
-                  ? <span style={{ fontSize: 10, fontWeight: 800, color: POS, background: '#E8F6EF', borderRadius: 999, padding: '3px 8px' }}>{t.tier.recurring ? 'Joined' : 'Sold'}</span>
+                  ? <span style={{ fontSize: 10, fontWeight: 800, color: ACCENT_INK, background: ACCENT_SOFT, borderRadius: 999, padding: '3px 8px' }}>{t.tier.recurring ? 'Joined' : 'Sold'}</span>
                   : <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 600, color: SUB }}><span style={{ width: 5, height: 5, borderRadius: 999, background: POS }} className="pulse-glow" /> Active</span>}
               </header>
               <div style={{ flex: 1, background: '#fff', minHeight: 0 }}>
@@ -219,7 +222,7 @@ export default function OpsCenterAd() {
         {/* ── AI Engine source node (orb + revenue) ── */}
         <div style={{ position: 'absolute', left: ORB_CX - ORB_SIZE / 2, top: ORB_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 24 }}>
           <div style={{ position: 'absolute', inset: 24, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(22,164,108,0.10), rgba(22,164,108,0))' }} />
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={520} aiColor={'#0E7A4F'} idleColor={'#0E7A4F'} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.5} style={{ position: 'absolute', inset: 0 }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={520} aiColor={ACCENT} idleColor={ACCENT} avatarSrc={asset('/profilepicnew.png')} avatarScale={0.5} style={{ position: 'absolute', inset: 0 }} />
         </div>
         <div style={{ position: 'absolute', left: ORB_CX - 130, top: ORB_CY + ORB_SIZE / 2 - 6, width: 260, textAlign: 'center', zIndex: 24 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: INK, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 999, padding: '5px 13px', boxShadow: SHADOW }}>
@@ -251,7 +254,7 @@ export default function OpsCenterAd() {
                       <span style={{ width: 3, height: 3, borderRadius: 999, background: FAINT }} />
                       <span style={{ fontSize: 12, color: FAINT, fontVariantNumeric: 'tabular-nums' }}>{a.t}</span>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUB, border: `1px solid ${BORDER}`, borderRadius: 5, padding: '1px 5px' }}>AI</span>
-                      {a.won && <span style={{ fontSize: 10, fontWeight: 800, color: POS, background: '#E8F6EF', borderRadius: 5, padding: '1px 6px' }}>Won</span>}
+                      {a.won && <span style={{ fontSize: 10, fontWeight: 800, color: ACCENT_INK, background: ACCENT_SOFT, borderRadius: 5, padding: '1px 6px' }}>Won</span>}
                     </div>
                   </div>
                 </div>
