@@ -238,7 +238,7 @@ export default function OpsCenterAd() {
         {/* ── AI Engine source node (orb + revenue) ── */}
         <div style={{ position: 'absolute', left: ORB_CX - ORB_SIZE / 2, top: ORB_CY - ORB_SIZE / 2, width: ORB_SIZE, height: ORB_SIZE, zIndex: 24 }}>
           <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(22,164,108,0.13), rgba(22,164,108,0))' }} />
-          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={480} aiColor={ACCENT} idleColor={ACCENT} light avatarSrc={asset('/profilepicnew.png')} avatarScale={0.52} style={{ position: 'absolute', inset: 0 }} />
+          <VoiceOrbCluster speaker={orb.speaker} level={orb.speaker === 'processing' ? 0 : 0.1} spin={0.45} morphSpeed={0.04} size={ORB_SIZE} count={480} aiColor={ACCENT} idleColor={ACCENT} light avatarSrc={asset('/profilepicnew.png')} avatarScale={0.46} style={{ position: 'absolute', inset: 0 }} />
         </div>
         <div style={{ position: 'absolute', left: ORB_CX - 130, top: ORB_CY + ORB_SIZE / 2 - 6, width: 260, textAlign: 'center', zIndex: 24 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: INK, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 999, padding: '5px 13px', boxShadow: SHADOW }}>
