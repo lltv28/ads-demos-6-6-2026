@@ -141,13 +141,13 @@ export default function MembershipAd() {
         <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
           {paths.map((d, i) => (
             <g key={i}>
-              <path d={d} stroke="rgba(255,255,255,0.05)" strokeWidth={5} fill="none" />
+              <path d={d} stroke="rgba(255,255,255,0.05)" strokeWidth={6} fill="none" />
               <path d={d} stroke="rgba(46,125,82,0.3)" strokeWidth={2} fill="none" />
-              <path d={d} stroke="rgba(46,125,82,0.8)" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeDasharray="14 240" className="ladder-flow" style={{ animationDelay: `${i * 0.25}s` }} />
+              <path d={d} stroke="rgba(46,125,82,0.8)" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray="15 250" className="ladder-flow" style={{ animationDelay: `${i * 0.4}s` }} />
             </g>
           ))}
           {top && (
-            <path key={top.key} d={paths[pulseIdx]} stroke="#4ade80" strokeWidth={10} fill="none" strokeLinecap="round" strokeDasharray="40 2000" className="ladder-inbound"
+            <path key={top.key} d={paths[pulseIdx]} stroke="#4ade80" strokeWidth={12} fill="none" strokeLinecap="round" strokeDasharray="40 2000" className="ladder-inbound"
               style={{ filter: 'drop-shadow(0 0 8px rgba(74,222,128,0.8))' }} />
           )}
         </svg>
@@ -204,7 +204,7 @@ export default function MembershipAd() {
         </div>
 
         <style>{`
-          @keyframes ladder-flow { to { stroke-dashoffset: 254; } }
+          @keyframes ladder-flow { to { stroke-dashoffset: -250; } }
           .ladder-flow { animation: ladder-flow 2s linear infinite; }
           @keyframes ladder-inbound-k { from { stroke-dashoffset: 2000; opacity: 1; } to { stroke-dashoffset: 0; opacity: 0; } }
           .ladder-inbound { animation: ladder-inbound-k 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
